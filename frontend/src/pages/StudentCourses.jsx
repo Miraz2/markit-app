@@ -41,7 +41,7 @@ export default function StudentCourses() {
         </div>
         <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">Admin Restriction</h2>
         <p className="text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
-          Course-wise student lists are for assigned teachers. Use the Student Roster to manage all students.
+          Course-wise student lists are for assigned teachers. Use View Students to manage all students.
         </p>
       </div>
     );
@@ -79,7 +79,7 @@ export default function StudentCourses() {
             ) : (
               <button
                 key={idx}
-                onClick={() => navigate(`/students/class?${openParams(c)}`)}
+                onClick={() => navigate(`/students/courses?${openParams(c)}`)}
                 className="glass-card px-5 py-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 text-left group cursor-pointer transition hover:border-slate-400/60 dark:hover:border-slate-600 hover:shadow-lg hover:shadow-slate-400/10 active:scale-[0.98] active:shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">

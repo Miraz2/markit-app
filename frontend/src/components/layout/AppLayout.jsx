@@ -15,6 +15,7 @@ import {
   Calendar,
   CalendarDays,
   UserCheck,
+  UserCog,
   History,
   LogOut,
   Sun,
@@ -78,8 +79,9 @@ export default function AppLayout() {
 
   const adminNav = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/admin/teachers", label: "Professors / Teachers", icon: UserCheck, end: true },
     { to: "/admin/sessions", label: "Academic Sessions", icon: Calendar },
+    { to: "/admin/teachers", label: "Professors / Teachers", icon: UserCheck, end: true },
+    { to: "/admin/teachers/enroll", label: "Enroll Teacher", icon: UserCog, end: true },
     { to: "/students", label: "Student Roster", icon: Users, end: true },
     { to: "/students/enroll", label: "Enroll Student", icon: UserPlus, end: true },
     { to: "/attendance/history", label: "Attendance History", icon: History },

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
@@ -13,6 +13,7 @@ import Dashboard from "./pages/Dashboard";
 import TeacherManagement from "./pages/TeacherManagement";
 import TeacherEnroll from "./pages/TeacherEnroll";
 import SessionManagement from "./pages/SessionManagement";
+import SessionDetail from "./pages/SessionDetail";
 import TeacherAssign from "./pages/TeacherAssign";
 import Students from "./pages/Students";
 import StudentEnroll from "./pages/StudentEnroll";
@@ -35,6 +36,14 @@ const queryClient = new QueryClient({
     queries: { retry: 1, refetchOnWindowFocus: false },
   },
 });
+
+// /students/courses shows the course picker; with department/batch/section
+// params it renders the students of that class.
+function StudentCoursesRoute() {
+  const [searchParams] = useSearchParams();
+  const isClassView = ["department", "batch", "section"].every((k) => searchParams.get(k));
+  return isClassView ? <ClassStudents /> : <StudentCourses />;
+}
 
 export default function App() {
   return (
@@ -79,14 +88,14 @@ export default function App() {
                   <Route path="/admin/teachers" element={<TeacherManagement />} />
                   <Route path="/admin/teachers/enroll" element={<TeacherEnroll />} />
                   <Route path="/admin/sessions" element={<SessionManagement />} />
+                  <Route path="/admin/sessions/:id" element={<SessionDetail />} />
                   <Route path="/admin/sessions/assign/:teacherId" element={<TeacherAssign />} />
                   <Route path="/students" element={<Students />} />
                   <Route path="/students/enroll" element={<StudentEnroll />} />
                   <Route path="/students/:id/edit" element={<StudentEdit />} />
                 </Route>
 
-                <Route path="/students/courses" element={<StudentCourses />} />
-                <Route path="/students/class" element={<ClassStudents />} />
+                <Route path="/students/courses" element={<StudentCoursesRoute />} />
                 <Route path="/attendance/take" element={<TakeCourses />} />
                 <Route path="/attendance/take/class" element={<AttendanceTake />} />
                 <Route path="/attendance/history" element={<AttendanceHistory />} />

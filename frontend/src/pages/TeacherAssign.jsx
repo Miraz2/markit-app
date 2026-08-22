@@ -183,7 +183,7 @@ export default function TeacherAssign() {
       {/* Header */}
       <div>
         <Link
-          to="/admin/sessions"
+          to={activeSession ? `/admin/sessions/${activeSession._id || activeSession.id}` : "/admin/sessions"}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition mb-2"
         >
           <ArrowLeft className="h-3.5 w-3.5" />

@@ -228,8 +228,8 @@ export default function Dashboard() {
             <>
               <ActionPortal
                 to="/admin/teachers"
-                title="Enroll Teacher"
-                desc="Create professor accounts for faculty members."
+                title="View Teachers"
+                desc="Browse and manage faculty member accounts."
                 icon={UserCheck}
               />
               <ActionPortal
@@ -267,7 +267,7 @@ export default function Dashboard() {
           {isAdmin && (
             <ActionPortal
               to="/students"
-              title="Browse Student Roster"
+              title="View Students"
               desc="Search and edit enrolled students by department & batch."
               icon={Users}
             />
