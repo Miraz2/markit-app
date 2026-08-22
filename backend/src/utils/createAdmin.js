@@ -20,7 +20,7 @@ async function run() {
     }
 
     // 2. Also ensure dedicated admin account exists
-    const adminEmail = "admin@university.edu";
+    const adminEmail = "admin@bu.edu";
     let admin = await Teacher.findOne({ email: adminEmail });
     if (!admin) {
       const passwordHash = await bcrypt.hash("Admin123456", 12);
