@@ -87,21 +87,53 @@ export default function AttendanceTake() {
     const matchedSet = new Set(presentIds);
     let count = 0;
     let already = 0;
+    const missed = [];
+
+    const batchStr = String(batch || "");
     tokens.forEach((token) => {
-      const padded = token.padStart(2, "0");
+      const raw = token.replace(/\D/g, "");
+      if (!raw) return;
+
+      // Token interpretation (batch 68, rolls like 202411068 + 0 + 013):
+      //   13 / 013  → current batch serial 13 → matches only 2024110680013
+      //   33 / 033 / 68033 → batch 68 serial 33 → matches only 2024110680033
+      //   64033     → another batch's tail → matched literally as typed
+      let core = raw.replace(/^0+/, "");
+      if (batchStr && core.startsWith(batchStr)) {
+        core = core.slice(batchStr.length).replace(/^0+/, "") || "";
+      }
+
+      const tail =
+        core === ""
+          ? null
+          : core.length <= 3
+            ? batchStr
+              ? new RegExp(`${batchStr}0+${core}$`)
+              : new RegExp(`0+${core}$`)
+            : null;
+      const literalTail = core.length > 3 ? core : null;
+
+      let tokenHit = false;
       students.forEach((s) => {
         const sid = String(s.studentId || "");
-        if (sid === token || sid.endsWith(padded)) {
+        const hit =
+          sid === raw ||
+          Boolean(tail && tail.test(sid)) ||
+          Boolean(literalTail && sid.endsWith(literalTail));
+        if (hit) {
+          tokenHit = true;
           if (matchedSet.has(s._id)) already++;
           else { matchedSet.add(s._id); count++; }
         }
       });
+      if (!tokenHit) missed.push(token);
     });
 
     setPresentIds(matchedSet);
-    if (count > 0) toast.success(`Marked ${count} student(s) present`);
-    else if (already > 0) toast("Already selected", { icon: "ℹ️" });
-    else toast("No matching students found", { icon: "ℹ️" });
+    const missedNote = missed.length ? ` · no match: ${missed.join(", ")}` : "";
+    if (count > 0) toast.success(`Marked ${count} student(s) present${missedNote}`);
+    else if (already > 0) toast(`Already selected${missedNote}`, { icon: "ℹ️" });
+    else toast(`No matching students found${missedNote.replace(" · no match: ", " for: ")}`, { icon: "ℹ️" });
   };
 
   const toggleStudent = (id) => {

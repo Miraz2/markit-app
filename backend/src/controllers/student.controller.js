@@ -107,11 +107,7 @@ export const updateStudent = asyncHandler(async (req, res) => {
 });
 
 export const deleteStudent = asyncHandler(async (req, res) => {
-  const student = await Student.findOneAndUpdate(
-    { _id: req.params.id, isActive: true },
-    { isActive: false },
-    { new: true }
-  );
+  const student = await Student.findOneAndDelete({ _id: req.params.id, isActive: true });
   if (!student) throw ApiError.notFound("Student not found");
 
   return sendOk(res, null, "Student removed");

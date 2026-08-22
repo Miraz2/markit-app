@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { studentApi, courseStudentApi } from "../api/endpoints";
+import SearchableSelect from "../components/ui/SearchableSelect";
+import { useDepartments } from "../hooks/useMeta";
 import { Users, UserPlus, Search, Edit2, Trash2, X, UserCheck, GraduationCap } from "lucide-react";
 
 // Fetch every active student once (backend pages at 200) — all filtering is client-side
@@ -28,7 +30,10 @@ export default function Students() {
   const [section, setSection] = useState("");
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [editForm, setEditForm] = useState(null);
   const queryClient = useQueryClient();
+  const metaDepartments = useDepartments();
 
   const { data, isLoading } = useQuery({
     queryKey: ["students", "all"],
@@ -51,6 +56,30 @@ export default function Students() {
       setConfirmDelete(null);
     },
     onError: (err) => toast.error(err.response?.data?.message || "Failed to remove student"),
+  });
+
+  const openEdit = (s) => {
+    setEditing(s);
+    setEditForm({
+      studentId: s.studentId,
+      name: s.name,
+      department: s.department,
+      batch: s.batch,
+      section: s.section,
+      email: s.email || "",
+      phone: s.phone || "",
+    });
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: (payload) => studentApi.update(editing._id, payload),
+    onSuccess: () => {
+      toast.success("Student details updated successfully");
+      queryClient.invalidateQueries({ queryKey: ["students", "all"] });
+      setEditing(null);
+      setEditForm(null);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || "Failed to update student"),
   });
 
   const allStudents = useMemo(
@@ -234,13 +263,13 @@ export default function Students() {
                       {s.section}
                     </td>
                     <td className="px-5 py-3.5 text-right space-x-2">
-                      <Link
-                        to={`/students/${s._id}/edit`}
+                      <button
+                        onClick={() => openEdit(s)}
                         className="p-1.5 inline-block rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-500/20 hover:text-slate-500 transition"
                         title="Edit Student"
                       >
                         <Edit2 className="h-4 w-4" />
-                      </Link>
+                      </button>
                       <button
                         onClick={() => setConfirmDelete(s)}
                         className="p-1.5 inline-block rounded-lg text-slate-400 hover:bg-slate-500/20 hover:text-slate-500 transition"
@@ -355,6 +384,140 @@ export default function Students() {
                   {deleteMutation.isPending ? "Removing..." : "Remove Student"}
                 </button>
               </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* EDIT STUDENT MODAL */}
+      {editing && editForm &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-700/60 backdrop-blur-sm animate-fadeIn">
+            <div className="glass-card w-full max-w-lg rounded-3xl p-6 shadow-2xl border border-white/20 relative bg-white/95 dark:bg-[#242b3d]/95 max-h-[90vh] overflow-y-auto">
+              <button
+                onClick={() => {
+                  setEditing(null);
+                  setEditForm(null);
+                }}
+                className="absolute top-5 right-5 text-slate-400 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white mb-1">
+                Edit Student Information
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mb-6">
+                Update roster information for {editForm.name} ({editForm.studentId}).
+              </p>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  updateMutation.mutate(editForm);
+                }}
+                className="space-y-4 text-xs"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">
+                      Student Roll ID
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.studentId}
+                      onChange={(e) => setEditForm({ ...editForm, studentId: e.target.value })}
+                      className="glass-input font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Department</label>
+                    <SearchableSelect
+                      value={editForm.department}
+                      onChange={(v) => setEditForm({ ...editForm, department: v })}
+                      options={metaDepartments.map((d) => ({ value: d, label: d }))}
+                      placeholder="Select department"
+                      searchPlaceholder="Search departments…"
+                      emptyMessage="No departments found"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Batch</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.batch}
+                      onChange={(e) => setEditForm({ ...editForm, batch: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Section</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.section}
+                      onChange={(e) => setEditForm({ ...editForm, section: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">Phone (Optional)</label>
+                    <input
+                      type="text"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="glass-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditing(null);
+                      setEditForm(null);
+                    }}
+                    className="glass-btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updateMutation.isPending}
+                    className="glass-btn-primary px-6"
+                  >
+                    {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>,
           document.body
