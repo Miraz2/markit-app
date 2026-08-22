@@ -1,0 +1,136 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply scroll-smooth;
+  }
+  body {
+    @apply bg-[#f1f5f9] text-slate-800 font-sans antialiased transition-colors duration-300 dark:bg-[#1a2130] dark:text-slate-200;
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+  }
+  ::selection {
+    @apply bg-slate-900/20 text-slate-900 dark:bg-white/20 dark:text-slate-100;
+  }
+}
+
+@layer utilities {
+  /* Readability bump for very small labels */
+  .text-xs {
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  [class~="text-[10px]"] {
+    font-size: 0.6875rem;
+    line-height: 1.4;
+  }
+  [class~="text-[11px]"] {
+    font-size: 0.75rem;
+    line-height: 1.45;
+  }
+}
+
+/* Dashboard panel & card theme classes */
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.72);
+    border-right: 1px solid rgba(226, 232, 240, 0.8);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+  }
+
+  .dark .glass-panel {
+    background: rgba(36, 43, 61, 0.72);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    box-shadow: 0 4px 18px 0 rgba(31, 38, 135, 0.03);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+  }
+
+  .dark .glass-card {
+    background: rgba(36, 43, 61, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  .glass-input {
+    @apply w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-400/30 dark:border-slate-700/60 dark:bg-slate-900/60 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-400 dark:focus:ring-slate-400/40;
+  }
+
+  .glass-btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-slate-700 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-600/25 transition hover:bg-slate-600 focus:ring-2 focus:ring-slate-400/50 active:scale-95 disabled:opacity-50 disabled:pointer-events-none dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200;
+  }
+
+  .glass-btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white/70 px-4 py-2.5 text-sm font-semibold text-slate-700 backdrop-blur-md transition hover:bg-slate-100 dark:border-slate-700/60 dark:bg-slate-800/60 dark:text-slate-200 dark:hover:bg-slate-800 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .glass-btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-slate-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-slate-600/25 transition hover:bg-slate-500 active:scale-95 disabled:opacity-50 disabled:pointer-events-none dark:bg-slate-200 dark:text-slate-900 dark:hover:bg-slate-400;
+  }
+}
+
+/* Buttons (used by ui/Button.jsx) */
+.btn-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-400/50 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200;
+}
+.btn-secondary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-300/40 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700/70;
+}
+.btn-danger {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-sm transition hover:bg-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-400/50 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none;
+}
+
+/* Card (used by ui/Card.jsx) */
+.card {
+  @apply rounded-2xl bg-white border border-slate-200/80 shadow-sm dark:bg-[#1d2333] dark:border-slate-800;
+}
+
+/* Date input calendar icon: light color in dark mode */
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85) brightness(1.4);
+  cursor: pointer;
+}
+
+/* Sign-in fields: never let browser autofill paint a background */
+.signin-field:-webkit-autofill,
+.signin-field:-webkit-autofill:hover,
+.signin-field:-webkit-autofill:focus {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  transition: background-color 999999s ease-in-out 0s;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
+}

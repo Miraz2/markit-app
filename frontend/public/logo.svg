@@ -1,0 +1,28 @@
+<svg viewBox="0 0 144 144" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818CF8"/>
+      <stop offset="55%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square icon chip -->
+  <rect x="4" y="4" width="136" height="136" rx="34" fill="url(#iconGrad)"/>
+
+  <!-- Teacher figure: head + shoulders, with a small pointer/board line for context -->
+  <circle cx="72" cy="52" r="18" fill="#ffffff"/>
+  <path d="M40 104 C40 80 56 68 72 68 C88 68 104 80 104 104 L104 110 C104 114 100 118 96 118 L48 118 C44 118 40 114 40 110 Z" fill="#ffffff"/>
+
+  <!-- Small pointer stick, signals "teacher" -->
+  <line x1="100" y1="100" x2="118" y2="82" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="118" cy="82" r="4" fill="#ffffff"/>
+
+  <!-- Checkmark badge -->
+  <circle cx="104" cy="108" r="22" fill="url(#checkGrad)"/>
+  <path d="M93 108 L100 115 L116 99" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
