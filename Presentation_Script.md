@@ -12,7 +12,7 @@
 
 ---
 
-## 🎤 Member 1: Mirazul Momen Miraz — Opening & Vision
+## 🎤 Member 1: Ratul Hassan Joy — Opening & Vision
 **(Slides 1–4 + Slide 16 closing) | ~3 min**
 
 ### Slide 1 — Title
@@ -44,16 +44,16 @@
 > **Third**, zero paperwork — history, summaries, and PDF/CSV exports are generated automatically.
 > And **fourth**, it works everywhere — any phone, any classroom, light or dark mode.
 >
-> Now Ratul will show you what's under the hood. → *(hand over)*
+> Now Miraz will show you what's under the hood. → *(hand over)*
 
 ---
 
-## 🎤 Member 2: Ratul Hassan Joy — Technology, Architecture & Security
+## 🎤 Member 2: Mirazul Momen Miraz — Technology, Architecture & Security
 **(Slides 5–8) | ~3 min**
 
 ### Slide 5 — Technology Stack
 
-> Thank you, Mirazul. MarkIt is a full-stack application, and we chose technologies that are proven, well-documented, and industry-standard.
+> Thank you, Ratul. MarkIt is a full-stack application, and we chose technologies that are proven, well-documented, and industry-standard.
 >
 > On the **frontend**, we used React 18 with Vite for a fast single-page app, React Router for navigation, and TanStack React Query to keep the screen perfectly in sync with the database without manual refreshing. TailwindCSS gives us our clean glassmorphism design system.
 >
@@ -123,9 +123,12 @@
 
 > Thank you, Sadakin. MarkIt has two roles with least-privilege access.
 >
-> **Admins** see university-wide stats, create academic sessions like Summer-26, assign courses to teachers, and manage the official student roster — including bulk operations.
+> **Admins** run the university side: university-wide dashboards and stats, creating academic sessions like Summer-26, assigning courses to teachers, and managing the official roster — including bulk imports and password resets. But notice what's missing: admins can never alter an attendance record. Separation of duties.
 >
-> **Teachers** see only their own assigned sections, take attendance there, keep optional private course rosters that admins can view but never edit — and both roles manage their own profile and password. As Ratul mentioned, neither side can do the other's job.
+> **Teachers** see only their own assigned sections and students. They take attendance, resubmit safely when corrections are needed, keep optional private course rosters that admins can view but never edit, and export reports for their own classes.
+>
+> **students**. Students are strictly read-only. They get a personal dashboard with live attendance percentages, a course-wise breakdown with their teachers' names, and a day-by-day history they can verify themselves. They can change their own password and profile photo — and nothing else. They can't mark, edit, or even see anyone else's data.
+>
 
 ### Slide 13 — What Changes for Teachers
 

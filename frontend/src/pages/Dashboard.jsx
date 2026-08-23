@@ -19,8 +19,6 @@ import {
   Download,
 } from "lucide-react";
 
-const API_BASE = import.meta.env.VITE_API_URL || "/api";
-
 export default function Dashboard() {
   const { teacher } = useAuth();
   const isAdmin = teacher?.role === "admin";
@@ -301,7 +299,7 @@ export default function Dashboard() {
           </p>
         </div>
         <a
-          href={`${API_BASE}/files/MarkIt_Attendance_System_Presentation.pptx`}
+          href={`${import.meta.env.BASE_URL}MarkIt_Attendance_System_Presentation.pptx`}
           download="MarkIt_Attendance_System_Presentation.pptx"
           className="glass-btn-secondary shrink-0"
         >
