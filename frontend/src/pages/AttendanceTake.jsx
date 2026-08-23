@@ -247,7 +247,7 @@ export default function AttendanceTake() {
         <div className="space-y-4">
           {/* Quick Roll Input */}
           <div className="glass-card p-4 rounded-2xl border border-slate-400/20 dark:border-white/15 bg-gradient-to-r from-slate-500/10 dark:from-white/5 to-transparent">
-            <form onSubmit={handleQuickSelect} className="flex gap-2">
+            <form onSubmit={handleQuickSelect} className="flex flex-col gap-2 sm:flex-row">
               <div className="relative flex-1">
                 <Sparkles className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
                 <textarea
@@ -261,7 +261,7 @@ export default function AttendanceTake() {
                       handleQuickSelect();
                     }
                   }}
-                  className="block w-full pl-10 pr-11 py-2 rounded-xl text-xs glass-input font-mono resize-none"
+                  className="block w-full pl-10 pr-11 py-2 rounded-xl text-xs glass-input font-mono resize-none min-h-[4.75rem] sm:min-h-0"
                 />
                 {quickInput && (
                   <button
@@ -273,7 +273,10 @@ export default function AttendanceTake() {
                   </button>
                 )}
               </div>
-              <button type="submit" className="glass-btn-primary px-5 py-2 text-xs shrink-0 self-start">
+              <button
+                type="submit"
+                className="glass-btn-primary px-5 py-2 text-xs shrink-0 w-full sm:w-auto justify-center"
+              >
                 <Check className="h-3.5 w-3.5" /> Select
               </button>
             </form>

@@ -104,7 +104,7 @@ export default function Dashboard() {
       {/* Page Title & Breadcrumbs Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold font-display tracking-tight text-slate-800 dark:text-white">
+          <h1 className="text-4xl sm:text-2xl font-extrabold font-display tracking-tight text-slate-800 dark:text-white">
             Dashboard
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-300 mt-1 max-w-xl">
