@@ -1,0 +1,24 @@
+{
+  "services": {
+    "frontend": {
+      "root": "frontend/",
+      "framework": "vite",
+      "buildCommand": "vite build",
+      "outputDirectory": "dist",
+      "installCommand": "npm install --include=dev",
+      "rewrites": [
+        { "source": "/(.*)", "destination": "/index.html" }
+      ]
+    },
+    "backend": {
+      "root": "backend/",
+      "framework": "express",
+      "entrypoint": "api/index.js",
+      "installCommand": "npm install"
+    }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": { "service": "backend" } },
+    { "source": "/(.*)", "destination": { "service": "frontend" } }
+  ]
+}
