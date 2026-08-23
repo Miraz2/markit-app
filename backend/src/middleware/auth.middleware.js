@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
 import Teacher from "../models/Teacher.js";
+import Student from "../models/Student.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 // Verifies the short-lived access token (read from httpOnly cookie) and
@@ -33,3 +34,27 @@ export const requireRole =
     }
     next();
   };
+
+// Same as requireAuth but for student portal accounts — verifies the token,
+// loads the student document, and attaches it to req.student.
+export const requireStudent = asyncHandler(async (req, res, next) => {
+  const token = req.cookies?.accessToken;
+  if (!token) throw ApiError.unauthorized("Not authenticated");
+
+  let payload;
+  try {
+    payload = jwt.verify(token, env.jwt.accessSecret);
+  } catch {
+    throw ApiError.unauthorized("Session expired, please sign in again");
+  }
+
+  if (payload.kind !== "student") throw ApiError.unauthorized("Not authenticated");
+
+  const student = await Student.findById(payload.sub);
+  if (!student || !student.isActive) {
+    throw ApiError.unauthorized("Account no longer exists");
+  }
+
+  req.student = student;
+  next();
+});

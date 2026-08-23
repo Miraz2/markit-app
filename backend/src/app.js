@@ -11,6 +11,7 @@ import { globalLimiter } from "./middleware/rateLimit.middleware.js";
 import { notFoundHandler, errorHandler } from "./middleware/error.middleware.js";
 
 import authRoutes from "./routes/auth.routes.js";
+import studentAuthRoutes from "./routes/studentAuth.routes.js";
 import studentRoutes from "./routes/student.routes.js";
 import courseStudentRoutes from "./routes/courseStudent.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
@@ -49,6 +50,7 @@ if (env.nodeEnv !== "test") {
 app.get("/api/health", (req, res) => res.json({ success: true, message: "ok" }));
 
 app.use("/api/auth", authRoutes);
+app.use("/api/student-auth", studentAuthRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/students", studentRoutes);
 app.use("/api/course-students", courseStudentRoutes);

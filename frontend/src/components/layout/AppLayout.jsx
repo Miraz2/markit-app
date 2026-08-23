@@ -29,7 +29,9 @@ import {
 } from "lucide-react";
 
 export default function AppLayout() {
-  const { teacher, signout } = useAuth();
+  const { teacher, student, signout } = useAuth();
+  const isStudent = Boolean(student);
+  const account = student || teacher;
   const { isDark, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(() => {
@@ -98,9 +100,15 @@ export default function AppLayout() {
     { to: "/profile", label: "My Profile", icon: User },
   ];
 
-  const navItems = isAdmin ? adminNav : teacherNav;
+  const studentNav = [
+    { to: "/portal", label: "Dashboard", icon: LayoutDashboard, end: true },
+    { to: "/portal/history", label: "Class History", icon: History },
+    { to: "/portal/profile", label: "My Profile", icon: User },
+  ];
 
-  const initials = (teacher?.name || "U")
+  const navItems = isStudent ? studentNav : isAdmin ? adminNav : teacherNav;
+
+  const initials = (account?.name || "U")
     .split(" ")
     .map((p) => p[0])
     .join("")
@@ -125,6 +133,7 @@ export default function AppLayout() {
   const { data: sessionData } = useQuery({
     queryKey: ["meta", "sessions"],
     queryFn: () => metaApi.sessions(),
+    enabled: !isStudent, // student tokens can't call teacher-only meta routes
   });
   const activeSession = sessionData?.data?.activeSession?.name || null;
 
@@ -176,7 +185,7 @@ export default function AppLayout() {
           }`}
         >
           <Link
-            to="/dashboard"
+            to={isStudent ? "/portal" : "/dashboard"}
             className={`flex items-center cursor-pointer select-none rounded-xl ${collapsed ? "md:ml-0" : "ml-3"}`}
             aria-label="MarkIt home"
             onClick={closeNav}
@@ -200,8 +209,8 @@ export default function AppLayout() {
               collapsed ? "md:h-9 md:w-9 md:text-xs" : "h-20 w-20 text-xl"
             }`}
           >
-            {teacher?.profileImage ? (
-              <img src={teacher.profileImage} alt={teacher?.name} className="h-full w-full object-cover" />
+            {account?.profileImage ? (
+              <img src={account.profileImage} alt={account?.name} className="h-full w-full object-cover" />
             ) : (
               initials || <User className="h-4 w-4" />
             )}
@@ -209,10 +218,12 @@ export default function AppLayout() {
           {!collapsed && (
             <>
 <p className="mt-1 font-semibold text-sm text-slate-800 dark:text-slate-200 text-center tracking-tight">
-                {teacher?.name}
+                {account?.name}
               </p>
               <p className="text-[11px] font-medium text-slate-500 dark:text-slate-300 text-center mt-0.5 uppercase tracking-wide">
-                {teacher?.designation || (isAdmin ? "Administrator" : "Teacher")}
+                {isStudent
+                  ? `${student?.department} ${student?.batch}${student?.section}`
+                  : teacher?.designation || (isAdmin ? "Administrator" : "Teacher")}
               </p>
             </>
           )}
@@ -288,7 +299,7 @@ export default function AppLayout() {
                 {pageTitle}
               </h1>
               <p className="hidden sm:block text-[11px] text-slate-400 dark:text-slate-400 leading-tight">
-                {isAdmin ? "University Admin Portal" : "Faculty Portal"}
+                {isStudent ? "Student Portal" : isAdmin ? "University Admin Portal" : "Faculty Portal"}
               </p>
             </div>
           </div>
@@ -322,15 +333,15 @@ export default function AppLayout() {
                 aria-label="Account menu"
               >
                 <div className="h-8 w-8 flex items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white text-xs font-bold shadow-sm">
-                  {teacher?.profileImage ? (
-                    <img src={teacher.profileImage} alt={teacher?.name} className="h-full w-full object-cover" />
+                  {account?.profileImage ? (
+                    <img src={account.profileImage} alt={account?.name} className="h-full w-full object-cover" />
                   ) : (
                     initials || <User className="h-4 w-4" />
                   )}
                 </div>
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">
-                    {teacher?.name?.split(" ")[0]}
+                    {account?.name?.split(" ")[0]}
                   </p>
                 </div>
                 <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -348,11 +359,13 @@ export default function AppLayout() {
                       onClick={(e) => e.stopPropagation()}
                     >
                   <div className="px-3 py-2 border-b border-slate-200/60 dark:border-slate-800/60 mb-1">
-                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{teacher?.name}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{teacher?.email}</p>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-white">{account?.name}</p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {isStudent ? `ID: ${student?.studentId}` : teacher?.email}
+                    </p>
                   </div>
                   <NavLink
-                    to="/profile"
+                    to={isStudent ? "/portal/profile" : "/profile"}
                     onClick={() => setProfileOpen(false)}
                     className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-300 hover:bg-slate-500/10 hover:text-slate-500 dark:hover:text-slate-500 transition"
                   >

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { adminApi, metaApi } from "../api/endpoints";
@@ -11,11 +11,14 @@ import {
   BookOpen,
   Lock,
   History,
+  Search,
 } from "lucide-react";
 
 export default function SessionDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("name-asc");
 
   const { data: sessionData, isLoading } = useQuery({
     queryKey: ["admin", "sessions"],
@@ -46,6 +49,31 @@ export default function SessionDetail() {
       courseCount: (t.assignments || []).filter((a) => a.sessionName === name).length,
     }));
   }, [teachers, session]);
+
+  // Client-side search over name, department and assigned course names.
+  const filteredTeachers = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return allTeachers;
+    return allTeachers.filter(
+      (t) =>
+        t.name?.toLowerCase().includes(q) ||
+        (t.department && t.department.toLowerCase().includes(q)) ||
+        (t.assignments || []).some((a) => (a.courseName || "").toLowerCase().includes(q))
+    );
+  }, [allTeachers, search]);
+
+  const sorters = {
+    "name-asc": (a, b) => (a.name || "").localeCompare(b.name || ""),
+    "name-desc": (a, b) => (b.name || "").localeCompare(a.name || ""),
+    "courses-desc": (a, b) => b.courseCount - a.courseCount,
+    "courses-asc": (a, b) => a.courseCount - b.courseCount,
+  };
+
+  // Client-side sorting of the filtered list.
+  const sortedTeachers = useMemo(
+    () => [...filteredTeachers].sort(sorters[sort]),
+    [filteredTeachers, sort]
+  );
 
   if (isLoading) {
     return (
@@ -133,10 +161,37 @@ export default function SessionDetail() {
 
       {/* All teachers */}
       <div>
-        <h2 className="text-sm font-bold font-display text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-slate-600" />
-          All Teachers
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <h2 className="text-sm font-bold font-display text-slate-900 dark:text-white flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-slate-600" />
+            All Teachers
+          </h2>
+
+          {allTeachers.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search teacher, dept, or course..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl text-xs glass-input"
+                />
+              </div>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value)}
+                className="glass-input py-2 rounded-xl text-xs w-full sm:w-auto"
+              >
+                <option value="name-asc">Name (A–Z)</option>
+                <option value="name-desc">Name (Z–A)</option>
+                <option value="courses-desc">Most courses</option>
+                <option value="courses-asc">Fewest courses</option>
+              </select>
+            </div>
+          )}
+        </div>
 
         {loadingTeachers ? (
           <div className="glass-card p-10 rounded-3xl text-center text-xs text-slate-400 border border-slate-200/80 dark:border-slate-800">
@@ -146,9 +201,13 @@ export default function SessionDetail() {
           <div className="glass-card p-10 rounded-3xl text-center text-xs text-slate-400 border border-slate-200/80 dark:border-slate-800">
             No teachers enrolled yet.
           </div>
+        ) : sortedTeachers.length === 0 ? (
+          <div className="glass-card p-10 rounded-3xl text-center text-xs text-slate-400 border border-slate-200/80 dark:border-slate-800">
+            No teachers found matching your search.
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {allTeachers.map((t) => {
+            {sortedTeachers.map((t) => {
               const initials = (t.name || "?")
                 .split(" ")
                 .map((p) => p[0])

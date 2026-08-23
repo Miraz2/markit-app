@@ -11,22 +11,10 @@ import {
   setAuthCookies,
   clearAuthCookies,
 } from "../services/token.service.js";
+import { validateProfileImage } from "../utils/validateProfileImage.js";
 
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
-
-const PROFILE_IMAGE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=\s]+$/;
-const MAX_PROFILE_IMAGE_BYTES = 1024 * 1024; // 1MB decoded
-
-function validateProfileImage(value) {
-  if (!PROFILE_IMAGE_RE.test(String(value))) {
-    throw ApiError.badRequest("Profile image must be a PNG, JPG or WebP image");
-  }
-  const base64 = String(value).split(",")[1] || "";
-  if (Buffer.byteLength(base64, "base64") > MAX_PROFILE_IMAGE_BYTES) {
-    throw ApiError.badRequest("Image is too large. Please choose one under 1MB.");
-  }
-}
 
 export const getSetupStatus = asyncHandler(async (req, res) => {
   const userCount = await Teacher.countDocuments({});

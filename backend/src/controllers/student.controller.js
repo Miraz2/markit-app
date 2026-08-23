@@ -2,6 +2,7 @@ import Student from "../models/Student.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendOk } from "../utils/ApiResponse.js";
+import { getDefaultStudentPasswordHash } from "../utils/studentDefaults.js";
 
 export const enrollStudent = asyncHandler(async (req, res) => {
   const { studentId, name, department, batch, section, email, phone } = req.body;
@@ -15,6 +16,8 @@ export const enrollStudent = asyncHandler(async (req, res) => {
     email,
     phone,
     enrolledBy: req.teacher._id,
+    passwordHash: await getDefaultStudentPasswordHash(),
+    mustChangePassword: true,
   });
 
   return sendOk(res, { student }, "Student enrolled", 201);
@@ -42,6 +45,12 @@ export const bulkEnrollStudents = asyncHandler(async (req, res) => {
 
   const invalid = docs.find((d) => !d.studentId || !d.name || !d.department || !d.batch || !d.section);
   if (invalid) throw ApiError.badRequest("Every row needs studentId, name, department, batch, and section");
+
+  const defaultPasswordHash = await getDefaultStudentPasswordHash();
+  for (const doc of docs) {
+    doc.passwordHash = defaultPasswordHash;
+    doc.mustChangePassword = true;
+  }
 
   const result = await Student.insertMany(docs, { ordered: false }).catch((err) => {
     // insertMany with ordered:false still throws on duplicate keys after inserting the rest

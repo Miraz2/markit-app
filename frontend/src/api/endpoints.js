@@ -11,6 +11,23 @@ export const authApi = {
   updateProfile: (payload) => api.put("/auth/profile", payload).then((r) => r.data),
 };
 
+// --- Student portal auth ---
+export const studentAuthApi = {
+  login: (payload) => api.post("/student-auth/login", payload).then((r) => r.data),
+  logout: () => api.post("/student-auth/logout").then((r) => r.data),
+  me: () => api.get("/student-auth/me").then((r) => r.data),
+  refreshToken: () => api.post("/student-auth/refresh-token").then((r) => r.data),
+  changePassword: (payload) => api.put("/student-auth/password", payload).then((r) => r.data),
+  updateProfileImage: (payload) => api.put("/student-auth/profile-image", payload).then((r) => r.data),
+};
+
+// --- Student portal data ---
+export const portalApi = {
+  summary: () => api.get("/student-auth/me/summary").then((r) => r.data),
+  myCourses: () => api.get("/student-auth/me/courses").then((r) => r.data),
+  history: () => api.get("/student-auth/me/history").then((r) => r.data),
+};
+
 // --- Admin ---
 export const adminApi = {
   listTeachers: () => api.get("/admin/teachers").then((r) => r.data),

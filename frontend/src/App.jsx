@@ -2,9 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import RequireAuth, { RequireRole } from "./components/layout/RequireAuth";
+import RequireAuth, { RequireRole, RequireStudent } from "./components/layout/RequireAuth";
 import AppLayout from "./components/layout/AppLayout";
 
 import SignIn from "./pages/SignIn";
@@ -29,6 +29,9 @@ import AttendanceHistory from "./pages/AttendanceHistory";
 import AttendanceClasses from "./pages/AttendanceClasses";
 import AttendanceClassDay from "./pages/AttendanceClassDay";
 import Profile from "./pages/Profile";
+import StudentPortalHome from "./pages/StudentPortalHome";
+import StudentPortalHistory from "./pages/StudentPortalHistory";
+import StudentPortalProfile from "./pages/StudentPortalProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -43,6 +46,13 @@ function StudentCoursesRoute() {
   const [searchParams] = useSearchParams();
   const isClassView = ["department", "batch", "section"].every((k) => searchParams.get(k));
   return isClassView ? <ClassStudents /> : <StudentCourses />;
+}
+
+// Sends each account kind to its own home once the session has been restored.
+function HomeRedirect() {
+  const { student, isLoading } = useAuth();
+  if (isLoading) return null;
+  return <Navigate to={student ? "/portal" : "/dashboard"} replace />;
 }
 
 export default function App() {
@@ -65,7 +75,7 @@ export default function App() {
               }}
             />
             <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/" element={<HomeRedirect />} />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/signup" element={<SignUp />} />
 
@@ -105,6 +115,19 @@ export default function App() {
                 <Route path="/attendance/summary/:sessionName/class" element={<AttendanceSummary />} />
                 <Route path="/attendance/summary/:sessionName" element={<SummaryClasses />} />
                 <Route path="/profile" element={<Profile />} />
+              </Route>
+
+              {/* Student portal — separate session kind, teacher routes blocked */}
+              <Route
+                element={
+                  <RequireStudent>
+                    <AppLayout />
+                  </RequireStudent>
+                }
+              >
+                <Route path="/portal" element={<StudentPortalHome />} />
+                <Route path="/portal/history" element={<StudentPortalHistory />} />
+                <Route path="/portal/profile" element={<StudentPortalProfile />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
