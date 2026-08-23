@@ -177,7 +177,7 @@ export default function AppLayout() {
         >
           <Link
             to="/dashboard"
-            className="flex items-center cursor-pointer select-none rounded-xl ml-3"
+            className={`flex items-center cursor-pointer select-none rounded-xl ${collapsed ? "md:ml-0" : "ml-3"}`}
             aria-label="MarkIt home"
             onClick={closeNav}
           >
@@ -197,7 +197,7 @@ export default function AppLayout() {
         <div className="py-6 flex flex-col items-center justify-center border-b border-slate-200/50 dark:border-slate-700/50 gap-1.5">
           <div
             className={`shrink-0 flex items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white font-bold shadow-md transition-all duration-300 ${
-              collapsed ? "md:h-9 md:w-9 md:text-xs" : "h-14 w-14 text-lg"
+              collapsed ? "md:h-9 md:w-9 md:text-xs" : "h-20 w-20 text-xl"
             }`}
           >
             {teacher?.profileImage ? (
