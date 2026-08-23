@@ -16,7 +16,10 @@ import {
   ShieldCheck,
   Clock,
   History,
+  Download,
 } from "lucide-react";
+
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 export default function Dashboard() {
   const { teacher } = useAuth();
@@ -285,6 +288,26 @@ export default function Dashboard() {
             icon={BarChart3}
           />
         </div>
+      </div>
+
+      {/* Project Presentation Download */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 glass-card px-5 py-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+        <div>
+          <h2 className="text-sm font-bold font-display text-slate-900 dark:text-white">
+            Project Overview
+          </h2>
+          <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
+            Introduction deck of MarkIt — features, architecture & team.
+          </p>
+        </div>
+        <a
+          href={`${API_BASE}/files/MarkIt_Attendance_System_Presentation.pptx`}
+          download="MarkIt_Attendance_System_Presentation.pptx"
+          className="glass-btn-secondary shrink-0"
+        >
+          <Download className="h-4 w-4" />
+          <span>Download PPTX</span>
+        </a>
       </div>
     </div>
   );
