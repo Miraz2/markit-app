@@ -196,11 +196,15 @@ export default function AppLayout() {
         {/* User Card inside Sidebar */}
         <div className="py-6 flex flex-col items-center justify-center border-b border-slate-200/50 dark:border-slate-700/50 gap-1.5">
           <div
-            className={`shrink-0 flex items-center justify-center rounded-full bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white font-bold shadow-md transition-all duration-300 ${
+            className={`shrink-0 flex items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white font-bold shadow-md transition-all duration-300 ${
               collapsed ? "md:h-9 md:w-9 md:text-xs" : "h-14 w-14 text-lg"
             }`}
           >
-            {initials || <User className="h-4 w-4" />}
+            {teacher?.profileImage ? (
+              <img src={teacher.profileImage} alt={teacher?.name} className="h-full w-full object-cover" />
+            ) : (
+              initials || <User className="h-4 w-4" />
+            )}
           </div>
           {!collapsed && (
             <>
@@ -317,8 +321,12 @@ export default function AppLayout() {
                 className="flex items-center gap-2 p-1 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600/55 transition"
                 aria-label="Account menu"
               >
-                <div className="h-8 w-8 flex items-center justify-center rounded-full bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white text-xs font-bold shadow-sm">
-                  {initials || <User className="h-4 w-4" />}
+                <div className="h-8 w-8 flex items-center justify-center rounded-full overflow-hidden bg-gradient-to-tr from-slate-700 to-slate-500 dark:from-slate-200 dark:to-slate-400 text-white text-xs font-bold shadow-sm">
+                  {teacher?.profileImage ? (
+                    <img src={teacher.profileImage} alt={teacher?.name} className="h-full w-full object-cover" />
+                  ) : (
+                    initials || <User className="h-4 w-4" />
+                  )}
                 </div>
                 <div className="text-left hidden sm:block">
                   <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">

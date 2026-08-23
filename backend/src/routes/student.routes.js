@@ -9,6 +9,7 @@ import {
   getStudent,
   updateStudent,
   deleteStudent,
+  bulkDeleteStudents,
 } from "../controllers/student.controller.js";
 
 const router = Router();
@@ -40,6 +41,13 @@ router.get(
 
 router.post("/", requireRole("admin"), studentFields, validate, enrollStudent);
 router.post("/bulk", requireRole("admin"), bulkEnrollStudents);
+router.post(
+  "/bulk-delete",
+  requireRole("admin"),
+  [body("ids").isArray({ min: 1, max: 500 }).withMessage("Provide 1-500 student ids")],
+  validate,
+  bulkDeleteStudents
+);
 
 router.get("/:id", [param("id").isMongoId()], validate, getStudent);
 router.put(

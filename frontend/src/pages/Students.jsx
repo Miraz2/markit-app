@@ -6,7 +6,17 @@ import toast from "react-hot-toast";
 import { studentApi, courseStudentApi } from "../api/endpoints";
 import SearchableSelect from "../components/ui/SearchableSelect";
 import { useDepartments } from "../hooks/useMeta";
-import { Users, UserPlus, Search, Edit2, Trash2, X, UserCheck, GraduationCap } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  Search,
+  Edit2,
+  Trash2,
+  X,
+  UserCheck,
+  GraduationCap,
+  RefreshCw,
+} from "lucide-react";
 
 // Fetch every active student once (backend pages at 200) — all filtering is client-side
 const fetchAllStudents = async () => {
@@ -30,12 +40,14 @@ export default function Students() {
   const [section, setSection] = useState("");
   const [search, setSearch] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [editing, setEditing] = useState(null);
   const [editForm, setEditForm] = useState(null);
   const queryClient = useQueryClient();
   const metaDepartments = useDepartments();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["students", "all"],
     queryFn: fetchAllStudents,
     staleTime: 5 * 60 * 1000,
@@ -57,6 +69,36 @@ export default function Students() {
     },
     onError: (err) => toast.error(err.response?.data?.message || "Failed to remove student"),
   });
+
+  const bulkDeleteMutation = useMutation({
+    mutationFn: (ids) => studentApi.bulkRemove([...ids]),
+    onSuccess: (res) => {
+      toast.success(res?.message || "Students removed");
+      queryClient.invalidateQueries({ queryKey: ["students", "all"] });
+      setSelectedIds(new Set());
+      setConfirmBulkDelete(false);
+    },
+    onError: (err) => toast.error(err.response?.data?.message || "Failed to remove students"),
+  });
+
+  const toggleSelected = (id) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const handleRefresh = async () => {
+    try {
+      await Promise.all([
+        refetch(),
+        queryClient.refetchQueries({ queryKey: ["course-students", "all"] }),
+      ]);
+      toast.success("Roster refreshed");
+    } catch {
+      toast.error("Failed to refresh roster");
+    }
+  };
 
   const openEdit = (s) => {
     setEditing(s);
@@ -149,10 +191,22 @@ export default function Students() {
           </p>
         </div>
 
-        <Link to="/students/enroll" className="glass-btn-primary self-start sm:self-auto">
-          <UserPlus className="h-4 w-4" />
-          <span>Enroll New Student</span>
-        </Link>
+        <div className="flex items-center gap-3 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={isFetching}
+            className="glass-btn-secondary"
+            title="Refresh roster"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <span>Refresh</span>
+          </button>
+          <Link to="/students/enroll" className="glass-btn-primary">
+            <UserPlus className="h-4 w-4" />
+            <span>Enroll New Student</span>
+          </Link>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -227,6 +281,26 @@ export default function Students() {
 
       {/* Roster Table */}
       <div className="glass-card rounded-3xl overflow-hidden border border-slate-200/80 dark:border-slate-800">
+        {/* Bulk Selection Bar */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 bg-slate-500/10 dark:bg-white/5 border-b border-slate-200/80 dark:border-slate-800">
+            <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+              {selectedIds.size} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setSelectedIds(new Set())} className="glass-btn-secondary text-xs py-1.5 px-3">
+                Clear
+              </button>
+              <button
+                onClick={() => setConfirmBulkDelete(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-100/60 px-3 py-1.5 text-xs font-semibold text-red-500 transition hover:bg-red-200/70 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete Selected
+              </button>
+            </div>
+          </div>
+        )}
         {isLoading ? (
           <div className="p-12 text-center text-xs text-slate-400">Loading student roster...</div>
         ) : students.length === 0 ? (
@@ -236,7 +310,18 @@ export default function Students() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-700/40 text-slate-500 uppercase tracking-wider font-semibold">
-                  <th className="px-5 py-3.5">Student Roll ID</th>
+                  <th className="pl-5 pr-2 py-3.5 w-10">
+                    <input
+                      type="checkbox"
+                      checked={students.length > 0 && students.every((s) => selectedIds.has(s._id))}
+                      onChange={(e) =>
+                        setSelectedIds(e.target.checked ? new Set(students.map((s) => s._id)) : new Set())
+                      }
+                      className="h-4 w-4 rounded cursor-pointer accent-slate-600"
+                      aria-label="Select all"
+                    />
+                  </th>
+                  <th className="px-2 py-3.5">Student Roll ID</th>
                   <th className="px-5 py-3.5">Name</th>
                   <th className="px-5 py-3.5">Department</th>
                   <th className="px-5 py-3.5">Batch</th>
@@ -246,8 +331,22 @@ export default function Students() {
               </thead>
               <tbody className="divide-y divide-slate-200/60 dark:divide-slate-800/60">
                 {students.map((s) => (
-                  <tr key={s._id} className="hover:bg-slate-500/10 transition">
-                    <td className="px-5 py-3.5 font-mono font-bold text-slate-500 dark:text-slate-300">
+                  <tr
+                    key={s._id}
+                    className={`transition ${
+                      selectedIds.has(s._id) ? "bg-slate-500/10 dark:bg-white/[0.07]" : "hover:bg-slate-500/10"
+                    }`}
+                  >
+                    <td className="pl-5 pr-2 py-3.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(s._id)}
+                        onChange={() => toggleSelected(s._id)}
+                        className="h-4 w-4 rounded cursor-pointer accent-slate-600"
+                        aria-label={`Select ${s.name}`}
+                      />
+                    </td>
+                    <td className="px-2 py-3.5 font-mono font-bold text-slate-500 dark:text-slate-300">
                       {s.studentId}
                     </td>
                     <td className="px-5 py-3.5 font-semibold text-slate-900 dark:text-white">
@@ -382,6 +481,44 @@ export default function Students() {
                   className="glass-btn-danger"
                 >
                   {deleteMutation.isPending ? "Removing..." : "Remove Student"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* CONFIRM BULK DELETE MODAL */}
+      {confirmBulkDelete &&
+        createPortal(
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-700/60 backdrop-blur-sm animate-fadeIn">
+            <div className="glass-card w-full max-w-md rounded-3xl p-6 shadow-2xl border border-white/20 relative bg-white/95 dark:bg-[#242b3d]/95">
+              <button
+                onClick={() => setConfirmBulkDelete(false)}
+                className="absolute top-5 right-5 text-slate-400 hover:text-white"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <h3 className="text-xl font-bold font-display text-slate-900 dark:text-white mb-1">
+                Remove {selectedIds.size} Student{selectedIds.size > 1 ? "s" : ""}
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-300 mb-6">
+                Are you sure you want to permanently remove{" "}
+                <strong>{selectedIds.size} selected student{selectedIds.size > 1 ? "s" : ""}</strong> from the active
+                roster? This action cannot be undone.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button type="button" onClick={() => setConfirmBulkDelete(false)} className="glass-btn-secondary">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => bulkDeleteMutation.mutate(selectedIds)}
+                  disabled={bulkDeleteMutation.isPending}
+                  className="glass-btn-danger"
+                >
+                  {bulkDeleteMutation.isPending ? "Removing..." : "Remove Students"}
                 </button>
               </div>
             </div>

@@ -34,6 +34,7 @@ export const studentApi = {
   update: (id, payload) => api.put(`/students/${id}`, payload).then((r) => r.data),
   remove: (id) => api.delete(`/students/${id}`).then((r) => r.data),
   bulk: (students) => api.post("/students/bulk", { students }).then((r) => r.data),
+  bulkRemove: (ids) => api.post("/students/bulk-delete", { ids }).then((r) => r.data),
 };
 
 // --- Personal course students (teacher-enrolled, outside main roster) ---

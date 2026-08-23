@@ -15,6 +15,19 @@ import {
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
 
+const PROFILE_IMAGE_RE = /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=\s]+$/;
+const MAX_PROFILE_IMAGE_BYTES = 1024 * 1024; // 1MB decoded
+
+function validateProfileImage(value) {
+  if (!PROFILE_IMAGE_RE.test(String(value))) {
+    throw ApiError.badRequest("Profile image must be a PNG, JPG or WebP image");
+  }
+  const base64 = String(value).split(",")[1] || "";
+  if (Buffer.byteLength(base64, "base64") > MAX_PROFILE_IMAGE_BYTES) {
+    throw ApiError.badRequest("Image is too large. Please choose one under 1MB.");
+  }
+}
+
 export const getSetupStatus = asyncHandler(async (req, res) => {
   const userCount = await Teacher.countDocuments({});
   return sendOk(res, { isFirstRun: userCount === 0 });
@@ -132,7 +145,7 @@ export const me = asyncHandler(async (req, res) => {
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {
-  const { name, designation, department, currentPassword, newPassword } = req.body;
+  const { name, designation, department, currentPassword, newPassword, profileImage } = req.body;
 
   const teacher = await Teacher.findById(req.teacher._id).select("+passwordHash");
   if (!teacher) throw ApiError.notFound("Teacher not found");
@@ -150,6 +163,16 @@ export const updateProfile = asyncHandler(async (req, res) => {
     if (name !== undefined) teacher.name = String(name).trim();
     if (designation !== undefined) teacher.designation = String(designation).trim();
     if (department !== undefined) teacher.department = String(department).trim();
+  }
+
+  // Any signed-in user may set or clear their own profile picture
+  if (profileImage !== undefined) {
+    if (profileImage === null || profileImage === "") {
+      teacher.profileImage = null;
+    } else {
+      validateProfileImage(profileImage);
+      teacher.profileImage = String(profileImage);
+    }
   }
 
   if (newPassword) {

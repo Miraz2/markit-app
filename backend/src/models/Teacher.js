@@ -29,6 +29,10 @@ const teacherSchema = new mongoose.Schema(
     department: { type: String, trim: true, maxlength: 100, default: "" },
     role: { type: String, enum: ["teacher", "admin"], default: "teacher" },
 
+    // Stored as a data URL (base64) — keeps uploads working on serverless
+    // filesystems where writing to disk does not persist.
+    profileImage: { type: String, default: null },
+
     assignments: { type: [assignmentSchema], default: [] },
 
     isVerified: { type: Boolean, default: true },
@@ -59,6 +63,7 @@ teacherSchema.methods.toSafeObject = function () {
     designation: this.designation,
     department: this.department,
     role: this.role,
+    profileImage: this.profileImage || null,
     assignments: this.assignments || [],
     createdAt: this.createdAt,
   };

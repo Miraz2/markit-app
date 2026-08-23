@@ -112,3 +112,24 @@ export const deleteStudent = asyncHandler(async (req, res) => {
 
   return sendOk(res, null, "Student removed");
 });
+
+export const bulkDeleteStudents = asyncHandler(async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    throw ApiError.badRequest("Provide a non-empty array of student ids");
+  }
+  if (ids.length > 500) {
+    throw ApiError.badRequest("Bulk delete is limited to 500 students per request");
+  }
+  if (ids.some((id) => !/^[0-9a-fA-F]{24}$/.test(String(id)))) {
+    throw ApiError.badRequest("One or more ids are invalid");
+  }
+
+  const result = await Student.deleteMany({ _id: { $in: ids }, isActive: true });
+
+  return sendOk(
+    res,
+    { deleted: result.deletedCount ?? 0 },
+    `${result.deletedCount ?? 0} student(s) removed`
+  );
+});
