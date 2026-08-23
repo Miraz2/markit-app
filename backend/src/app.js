@@ -17,6 +17,7 @@ import attendanceRoutes from "./routes/attendance.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import metaRoutes from "./routes/meta.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import fileRoutes from "./routes/file.routes.js";
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/api/course-students", courseStudentRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/meta", metaRoutes);
+app.use("/api/files", fileRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
