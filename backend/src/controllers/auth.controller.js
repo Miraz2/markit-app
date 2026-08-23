@@ -91,6 +91,7 @@ export const signin = asyncHandler(async (req, res) => {
   const accessToken = signAccessToken(teacher);
   const refreshToken = generateRefreshToken();
   teacher.refreshTokenHash = await hashToken(refreshToken);
+  teacher.prevRefreshTokenHash = null;
   await teacher.save();
 
   setAuthCookies(res, { accessToken, refreshToken, remember: Boolean(rememberMe) });
@@ -101,13 +102,16 @@ export const refreshToken = asyncHandler(async (req, res) => {
   const token = req.cookies?.refreshToken;
   if (!token) throw ApiError.unauthorized("No refresh token provided");
 
-  const candidates = await Teacher.find({ refreshTokenHash: { $ne: null } }).select(
-    "+refreshTokenHash"
-  );
+  const candidates = await Teacher.find({
+    $or: [{ refreshTokenHash: { $ne: null } }, { prevRefreshTokenHash: { $ne: null } }],
+  }).select("+refreshTokenHash +prevRefreshTokenHash");
 
   let matchedTeacher = null;
   for (const candidate of candidates) {
-    if (await compareToken(token, candidate.refreshTokenHash)) {
+    if (
+      (await compareToken(token, candidate.refreshTokenHash)) ||
+      (await compareToken(token, candidate.prevRefreshTokenHash))
+    ) {
       matchedTeacher = candidate;
       break;
     }
@@ -120,6 +124,9 @@ export const refreshToken = asyncHandler(async (req, res) => {
 
   const newAccessToken = signAccessToken(matchedTeacher);
   const newRefreshToken = generateRefreshToken();
+  // Keep the just-used hash around briefly so a racing second refresh
+  // (another tab) still validates instead of clearing the new cookie.
+  matchedTeacher.prevRefreshTokenHash = matchedTeacher.refreshTokenHash;
   matchedTeacher.refreshTokenHash = await hashToken(newRefreshToken);
   await matchedTeacher.save();
 
@@ -134,6 +141,7 @@ export const refreshToken = asyncHandler(async (req, res) => {
 export const signout = asyncHandler(async (req, res) => {
   if (req.teacher) {
     req.teacher.refreshTokenHash = null;
+    req.teacher.prevRefreshTokenHash = null;
     await req.teacher.save();
   }
   clearAuthCookies(res);

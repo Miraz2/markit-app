@@ -39,6 +39,9 @@ const teacherSchema = new mongoose.Schema(
     lastLoginAt: { type: Date, default: null },
 
     refreshTokenHash: { type: String, select: false, default: null },
+    // Grace-period fallback so a concurrent refresh (e.g. second browser tab)
+    // using the previous token doesn't wipe the newly issued session cookie.
+    prevRefreshTokenHash: { type: String, select: false, default: null },
     rememberMe: { type: Boolean, default: false },
     failedLoginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Date, default: null },

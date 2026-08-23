@@ -39,8 +39,11 @@ api.interceptors.response.use(
         return api(original);
       } catch (refreshError) {
         flushQueue(refreshError);
-        // Only force redirect if the original request was NOT /auth/me
-        if (!original?.url?.includes("/auth/me")) {
+        // A network/DB hiccup (no HTTP response) shouldn't destroy a valid
+        // session — only sign out when the server explicitly rejects the
+        // refresh token.
+        const rejected = Boolean(refreshError.response);
+        if (rejected && !original?.url?.includes("/auth/me")) {
           window.location.href = "/signin";
         }
         return Promise.reject(refreshError);
