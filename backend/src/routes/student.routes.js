@@ -56,6 +56,7 @@ router.put(
   [
     param("id").isMongoId(),
     body("email").optional({ checkFalsy: true }).isEmail(),
+    body("password").optional({ checkFalsy: true }).isLength({ min: 8 }).withMessage("Password must be at least 8 characters"),
   ],
   validate,
   updateStudent

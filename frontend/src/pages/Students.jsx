@@ -110,13 +110,14 @@ export default function Students() {
       section: s.section,
       email: s.email || "",
       phone: s.phone || "",
+      newPassword: "",
     });
   };
 
   const updateMutation = useMutation({
     mutationFn: (payload) => studentApi.update(editing._id, payload),
-    onSuccess: () => {
-      toast.success("Student details updated successfully");
+    onSuccess: (res) => {
+      toast.success(res?.message || "Student details updated successfully");
       queryClient.invalidateQueries({ queryKey: ["students", "all"] });
       setEditing(null);
       setEditForm(null);
@@ -551,7 +552,9 @@ export default function Students() {
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  updateMutation.mutate(editForm);
+                  const payload = { ...editForm };
+                  if (!payload.newPassword.trim()) delete payload.newPassword;
+                  updateMutation.mutate(payload);
                 }}
                 className="space-y-4 text-xs"
               >
@@ -633,6 +636,30 @@ export default function Students() {
                       className="glass-input"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-500 dark:text-slate-300 mb-1.5">
+                    Reset Password (Optional)
+                  </label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder="Leave blank to keep current password"
+                    minLength={8}
+                    value={editForm.newPassword}
+                    onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                    className="glass-input"
+                  />
+                  {editForm.newPassword.trim().length > 0 && editForm.newPassword.length < 8 ? (
+                    <p className="text-[11px] font-semibold text-red-500 mt-1">
+                      Password must be at least 8 characters
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      The student will be asked to set their own password after signing in with it.
+                    </p>
+                  )}
                 </div>
 
                 <div className="pt-2 flex justify-end gap-3">

@@ -1,4 +1,5 @@
 import Student from "../models/Student.js";
+import bcrypt from "bcryptjs";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendOk } from "../utils/ApiResponse.js";
@@ -105,6 +106,17 @@ export const updateStudent = asyncHandler(async (req, res) => {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   }
 
+  // Optional admin password reset — the student signs in with the new
+  // password and is prompted to set their own on first sign-in.
+  const password = String(req.body.password || "").trim();
+  if (password) {
+    if (password.length < 8) throw ApiError.badRequest("Password must be at least 8 characters");
+    updates.passwordHash = await bcrypt.hash(password, 12);
+    updates.mustChangePassword = true;
+    updates.refreshTokenHash = null;
+    updates.prevRefreshTokenHash = null;
+  }
+
   const student = await Student.findOneAndUpdate(
     { _id: req.params.id, isActive: true },
     updates,
@@ -112,7 +124,7 @@ export const updateStudent = asyncHandler(async (req, res) => {
   );
   if (!student) throw ApiError.notFound("Student not found");
 
-  return sendOk(res, { student }, "Student updated");
+  return sendOk(res, { student }, password ? "Student updated — password has been reset" : "Student updated");
 });
 
 export const deleteStudent = asyncHandler(async (req, res) => {

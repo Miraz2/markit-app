@@ -142,27 +142,27 @@ export default function StudentPortalHome() {
               title="Overall Attendance"
               value={`${overall.percentage}%`}
               subtitle={`across ${overall.total} recorded classes`}
-              bgGradient="from-[#5c56e6] via-[#7a5bf0] to-[#9d68f2]"
+              bgGradient="from-[#2563eb] via-[#3b82f6] to-[#60a5fa]"
+            />
+            <StatWidget
+              icon={BookOpen}
+              title="Courses Tracked"
+              value={mergedCourses.length}
+              subtitle="Total courses assigned to your class"
+              bgGradient="from-[#11b877] via-[#14c9a2] to-[#1ad1c8]"
             />
             <StatWidget
               icon={CalendarCheck}
               title="Days Present"
               value={overall.present}
               subtitle="Classes you attended"
-              bgGradient="from-[#11b877] via-[#14c9a2] to-[#1ad1c8]"
+              bgGradient="from-[#f43f5e] to-[#ec4899]"
             />
             <StatWidget
               icon={CalendarX}
               title="Days Absent"
               value={overall.absent}
               subtitle="Classes you missed"
-              bgGradient="from-[#f43f5e] to-[#ec4899]"
-            />
-            <StatWidget
-              icon={BookOpen}
-              title="Courses Tracked"
-              value={courses.length}
-              subtitle="Courses with recorded attendance"
               bgGradient="from-[#ffb03a] via-[#ff8d52] to-[#ff6b6b]"
             />
           </div>
