@@ -53,9 +53,8 @@ router.get(
     }));
 
     const pdfBuffer = await generateSummaryPdf({
-      filters: { department, batch, section, from, to, courseName: courseName || null },
+      filters: { department, batch, section, from, to, sessionName: sessionName || null, courseName: courseName || null },
       summary,
-      sessionCount: sessions.length,
       teacherName: req.teacher.name,
     });
 

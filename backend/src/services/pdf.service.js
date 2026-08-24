@@ -8,7 +8,7 @@ const GOLD = "#8a7f5f";
 const RED = "#a4341f";
 const ROW_LINE = "#e4ded0";
 
-export function generateSummaryPdf({ filters, summary, sessionCount, teacherName }) {
+export function generateSummaryPdf({ filters, summary, teacherName }) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", margin: 40, bufferPages: true });
 
@@ -33,7 +33,7 @@ export function generateSummaryPdf({ filters, summary, sessionCount, teacherName
       ["Batch", String(filters.batch ?? "—")],
       ["Section", filters.section || "—"],
       ["Course", filters.courseName || "—"],
-      ["Sessions Counted", String(sessionCount ?? 0)],
+      ["Session", filters.sessionName || "—"],
       ["From", filters.from || "—"],
       ["To", filters.to || "—"],
     ];
