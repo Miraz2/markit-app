@@ -11,14 +11,6 @@ function required(name, fallback) {
 
 const resolvedClientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 
-function deriveRpID(origin) {
-  try {
-    return new URL(origin).hostname;
-  } catch {
-    return "localhost";
-  }
-}
-
 export const env = {
   nodeEnv: process.env.NODE_ENV || "development",
   port: Number(process.env.PORT) || 5000,
@@ -34,8 +26,7 @@ export const env = {
   },
   webauthn: {
     rpName: process.env.WEBAUTHN_RP_NAME || "Attendance System",
-    rpID: deriveRpID(resolvedClientOrigin),
-    expectedOrigin: resolvedClientOrigin,
+    rpID: (process.env.WEBAUTHN_RP_ID || "").trim(),
   },
   cookieSecure: process.env.COOKIE_SECURE === "true",
 };

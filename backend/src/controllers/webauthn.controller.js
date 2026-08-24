@@ -30,6 +30,36 @@ const CHALLENGE_COOKIE_OPTS = {
   maxAge: 3 * 60 * 1000,
 };
 
+// The public origin the request actually arrived on. Behind Vercel's monorepo
+// rewrite this is the deployment domain itself, so QR links and WebAuthn RP
+// configuration follow whatever URL the app is being used on — localhost in
+// dev, the live domain in production — with zero manual configuration.
+function getRequestOrigin(req) {
+  const protoHeader = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const hostHeader = String(req.headers["x-forwarded-host"] || "").split(",")[0].trim();
+  const proto = protoHeader || req.protocol || "http";
+  const host = hostHeader || req.get("host") || "";
+  if (!host) return null;
+  try {
+    const origin = `${proto}://${host}`;
+    return { origin, hostname: new URL(origin).hostname };
+  } catch {
+    return null;
+  }
+}
+
+function resolveWebAuthnRp(req) {
+  if (env.webauthn.rpID) {
+    return {
+      rpID: env.webauthn.rpID,
+      expectedOrigins: [`https://${env.webauthn.rpID}`, `http://${env.webauthn.rpID}`],
+    };
+  }
+  const resolved = getRequestOrigin(req);
+  if (!resolved) throw ApiError.internal("Cannot determine deployment origin");
+  return { rpID: resolved.hostname, expectedOrigins: [resolved.origin] };
+}
+
 function signChallengeCookie(res, cookieName, payload) {
   const token = jwt.sign(payload, env.jwt.qrSecret, { expiresIn: "3m" });
   res.cookie(cookieName, token, CHALLENGE_COOKIE_OPTS);
@@ -64,7 +94,8 @@ export const getClassQr = asyncHandler(async (req, res) => {
   const ctx = { department, batch, section, courseName, date };
   const classId = encodeClassId(ctx);
   const token = signClassToken(ctx);
-  const url = `${env.clientOrigin}/attendance/scan?classId=${classId}&token=${token}`;
+  const resolved = getRequestOrigin(req);
+  const url = `${resolved?.origin || env.clientOrigin}/attendance/scan?classId=${classId}&token=${token}`;
 
   return sendOk(res, {
     classId,
@@ -118,9 +149,10 @@ export const postRegisterOptions = asyncHandler(async (req, res) => {
 
   const existing = await UserCredential.find({ student: student._id }).select("credentialID").lean();
 
+  const { rpID } = resolveWebAuthnRp(req);
   const options = await generateRegistrationOptions({
     rpName: env.webauthn.rpName,
-    rpID: env.webauthn.rpID,
+    rpID,
     userID: Buffer.from(student._id.toString(), "hex"),
     userName: String(student.studentId || student.email || "student"),
     userDisplayName: student.name,
@@ -157,8 +189,8 @@ export const postRegisterVerify = asyncHandler(async (req, res) => {
     verification = await verifyRegistrationResponse({
       response,
       expectedChallenge: challengePayload.challenge,
-      expectedOrigin: env.webauthn.expectedOrigin,
-      expectedRPID: env.webauthn.rpID,
+      expectedOrigin: resolveWebAuthnRp(req).expectedOrigins,
+      expectedRPID: resolveWebAuthnRp(req).rpID,
       requireUserVerification: true,
     });
   } catch (err) {
@@ -225,7 +257,7 @@ export const postAuthenticateOptions = asyncHandler(async (req, res) => {
   }
 
   const options = await generateAuthenticationOptions({
-    rpID: env.webauthn.rpID,
+    rpID: resolveWebAuthnRp(req).rpID,
     userVerification: "required",
     allowCredentials: credentials.map((c) => ({ id: c.credentialID })),
   });
@@ -270,8 +302,8 @@ export const postAuthenticateVerify = asyncHandler(async (req, res) => {
     verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge: challengePayload.challenge,
-      expectedOrigin: env.webauthn.expectedOrigin,
-      expectedRPID: env.webauthn.rpID,
+      expectedOrigin: resolveWebAuthnRp(req).expectedOrigins,
+      expectedRPID: resolveWebAuthnRp(req).rpID,
       credential: {
         id: credentialDoc.credentialID,
         publicKey: isoBase64URL.toBuffer(credentialDoc.credentialPublicKey),

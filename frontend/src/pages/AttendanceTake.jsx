@@ -101,7 +101,10 @@ export default function AttendanceTake() {
       try {
         const { data } = await webauthnApi.classQr(qrParams);
         if (cancelled) return;
-        const img = await QRCode.toDataURL(data.url, { width: 512, margin: 2 });
+        const scanUrl = `${window.location.origin}/attendance/scan?classId=${encodeURIComponent(
+          data.classId
+        )}&token=${encodeURIComponent(data.token)}`;
+        const img = await QRCode.toDataURL(scanUrl, { width: 512, margin: 2 });
         if (cancelled) return;
         setQrImg(img);
         setSecondsLeft(Math.max(1, Math.ceil(data.expiresInMs / 1000)));
