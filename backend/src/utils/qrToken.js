@@ -2,8 +2,6 @@ import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 
-const CLOCK_TOLERANCE_SECONDS = 5;
-
 export function buildScanKey({ department, batch, section, courseName = "", date }) {
   return [department, batch, section, courseName || "", date].join("|");
 }
@@ -44,7 +42,7 @@ export function verifyClassToken(token) {
   let payload;
   try {
     payload = jwt.verify(token, env.jwt.qrSecret, {
-      clockTolerance: CLOCK_TOLERANCE_SECONDS,
+      clockTolerance: env.jwt.qrClockToleranceSeconds,
     });
   } catch (err) {
     if (err?.name === "TokenExpiredError") {

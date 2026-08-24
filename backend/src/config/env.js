@@ -23,6 +23,7 @@ export const env = {
     accessExpires: process.env.JWT_ACCESS_EXPIRES || "15m",
     refreshExpires: process.env.JWT_REFRESH_EXPIRES || "7d",
     qrExpiresSeconds: Number(process.env.QR_TOKEN_EXPIRES_SECONDS) || 10,
+    qrClockToleranceSeconds: Number(process.env.QR_CLOCK_TOLERANCE_SECONDS) || 20,
   },
   webauthn: {
     rpName: process.env.WEBAUTHN_RP_NAME || "Attendance System",

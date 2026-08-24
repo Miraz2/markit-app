@@ -163,7 +163,7 @@ export default function ScanAttendance() {
             </p>
 
             <div className="mt-5 flex flex-col gap-2">
-              {(error?.kind === "expired" || error?.kind === "cancelled" || error?.kind === "failed") && (
+              {(error?.kind === "cancelled" || error?.kind === "failed") && (
                 <button
                   onClick={retry}
                   className="glass-btn-primary w-full py-2.5 text-xs justify-center flex items-center gap-1.5"
@@ -173,9 +173,13 @@ export default function ScanAttendance() {
                 </button>
               )}
               {error?.kind === "expired" && (
-                <p className="text-[11px] text-slate-400">
-                  Ask your teacher to show the latest QR and scan it again.
-                </p>
+                <div className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-left">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-300 leading-relaxed">
+                    Each QR is valid for a few seconds to stop screenshot sharing. Point your camera
+                    at the <span className="font-semibold">newest code on screen</span> and tap the
+                    link quickly.
+                  </p>
+                </div>
               )}
               {error?.kind === "no-device" && (
                 <Link
