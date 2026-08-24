@@ -299,8 +299,8 @@ export default function Dashboard() {
           </p>
         </div>
         <a
-          href={`${import.meta.env.BASE_URL}MarkIt_Attendance_System_Presentation.pptx`}
-          download="MarkIt_Attendance_System_Presentation.pptx"
+          href={`${import.meta.env.BASE_URL}markit.pptx`}
+          download="markit.pptx"
           className="glass-btn-secondary shrink-0"
         >
           <Download className="h-4 w-4" />

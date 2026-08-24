@@ -1,14 +1,14 @@
 # MarkIt — Presentation Script
 
-**Total time:** ~12 minutes (≈3 minutes per member)
-**Deck:** `MarkIt_Attendance_System_Presentation.pptx` (16 slides)
+**Total time:** ~13 minutes
+**Deck:** `MarkIt_Attendance_System_Presentation.pptx` (19 slides)
 
 | Member | Slides | Section |
 |---|---|---|
-| Mirazul Momen Miraz | 1–4, 16 | Opening, Team & Vision |
+| Mirazul Momen Miraz | 1–4, 19 | Opening, Team & Vision |
 | Ratul Hassan Joy | 5–8 | Technology, Architecture & Security |
-| Md. Sadakin Sanjid | 9–11 | Core Features |
-| Bushra Basher | 12–15 | Roles, Impact, Deployment & Roadmap |
+| Md. Sadakin Sanjid | 9–12 | Core Features |
+| Bushra Basher | 13–18 | Roles, Impact, Deployment, Roadmap & Data |
 
 ---
 
@@ -88,7 +88,7 @@
 ---
 
 ## 🎤 Member 3: Md. Sadakin Sanjid — Core Features
-**(Slides 9–11) | ~3 min**
+**(Slides 9–12) | ~3.5 min**
 
 ### Slide 9 — Student Roster Management
 
@@ -111,15 +111,27 @@
 > After the marks are in, MarkIt pays you back. Every historical session is browsable by course and day — open any one to see exactly who was present. Summaries aggregate per class or per student across any date range.
 >
 > Teachers export professional **PDF reports** generated server-side, or raw **CSV files** for Excel. No calculator, no evening lost at the end of the month.
+
+### Slide 12 — Dynamic QR + Biometric Attendance
+
+> And here's the crown jewel — attendance you literally cannot fake.
+>
+> Start on the lecturer's side — one tap. The teacher hits **"Project Dynamic QR"** in the web app, and the projector shows a full-screen code whose **signed token rotates every ten seconds**. That rotation is deliberate — hold that thought.
+>
+> Now the student's side. It starts with a **one-time setup**: the first time you attend, your phone registers a **WebAuthn credential with the server — just its public key**, never your fingerprint data. From then on, every class is the same: scan the projected code, the secure link opens, and instead of a password, **Face ID or your fingerprint signs the challenge right on the device**. The biometric never leaves your phone.
+>
+> And here the system asks two strict questions, in order. Is the signature valid? If not — **attempt stopped, auth failed**. Then: is the QR token still fresh? If someone tries yesterday's screenshot — **denied, token expired**. Remember the ten-second rotation? That's why sharing codes is pointless.
+>
+> Only a live scan *plus* a valid biometric gets through, and that student's ID **auto-selects on the teacher's attendance page**. Notice — still no database write. The teacher reviews the final list and submits. Biometrics prove identity; the teacher stays in command of the record.
 >
 > Handing over to Bushra, who'll cover permissions and what this means in practice. → *(hand over)*
 
 ---
 
 ## 🎤 Member 4: Bushra Basher — Roles, Impact, Deployment & Roadmap
-**(Slides 12–15) | ~3 min**
+**(Slides 13–18) | ~3.5 min**
 
-### Slide 12 — Roles & Permissions
+### Slide 13 — Roles & Permissions
 
 > Thank you, Sadakin. MarkIt has two roles with least-privilege access.
 >
@@ -130,27 +142,27 @@
 > **students**. Students are strictly read-only. They get a personal dashboard with live attendance percentages, a course-wise breakdown with their teachers' names, and a day-by-day history they can verify themselves. They can change their own password and profile photo — and nothing else. They can't mark, edit, or even see anyone else's data.
 >
 
-### Slide 13 — What Changes for Teachers
+### Slide 14 — What Changes for Teachers
 
 > Let's put real numbers on the impact.
 >
 > Roll-call drops from ten-to-fifteen minutes to under thirty seconds. Proxy prevention goes from an honor system to ID-matched digital marking. Records move from loose paper sheets to permanent cloud history. Monthly reports go from hours of tallying to one click. At-risk students surface live instead of being discovered too late. And it all works on the phone already in the teacher's pocket.
 
-### Slide 14 — Deployment & Scalability
+### Slide 15 — Deployment & Scalability
 
 > On the deployment side, everything ships from git — push to deploy.
 >
 > The frontend builds to static files served from Vercel's CDN worldwide. The backend runs as a single serverless function — it scales to zero when idle, so a quiet department at 3 AM costs nothing, and enrollment-week spikes are absorbed automatically. MongoDB Atlas handles the database with managed backups. All secrets — database URI, JWT keys, cookie flags — live in environment variables, never in source code.
 
-### Slide 15 — Future Enhancements
+### Slide 16 — Future Enhancements
 
-> And we're not done. Our roadmap includes QR-code check-in where students scan a rotating classroom code, automatic SMS alerts to guardians after repeated absences, analytics dashboards with early-warning flags, biometric verification for labs and exams, a React Native mobile app with offline marking, and a timetable engine with clash detection.
+> And we're not done. Our roadmap includes automatic SMS alerts to guardians after repeated absences, analytics dashboards with early-warning flags, a React Native mobile app with offline marking, and a timetable engine with clash detection.
 >
 > The architecture is modular, so each of these plugs into the same core attendance model.
 
 
 
-## 🎤 Member 1 returns: Mirazul — Slide 16 — Thank You / Q&A (~30 sec)
+## 🎤 Member 1 returns: Mirazul — Slide 19 — Thank You / Q&A (~30 sec)
 
 > So, that's MarkIt. Same old attendance task — reimagined to take thirty seconds instead of fifteen minutes, with records you can actually trust and reports you don't have to build.
 >
@@ -162,12 +174,13 @@
 
 | Segment | Target |
 |---|---|
-| Mirazul opening (slides 1–3) | ~2.5 min |
-| Ratul tech & security (slides 4–7) | ~3 min |
-| Sadakin features (slides 8–10) | ~3 min |
-| Bushra impact & roadmap (slides 11–15) | ~3 min |
-| Mirazul closing (slide 16) | ~0.5 min |
-| **Total** | **~12 min** |
+| Mirazul opening (slides 1–4) | ~2.5 min |
+| Ratul tech & security (slides 5–8) | ~3 min |
+| Sadakin features (slides 9–12) | ~3.5 min |
+| Bushra impact & roadmap (slides 13–16) | ~3 min |
+| Bushra data & sources (slides 17–18) | ~0.5 min |
+| Mirazul closing (slide 19) | ~0.5 min |
+| **Total** | **~13 min** |
 
 ## ✅ Rehearsal Tips
 
@@ -175,3 +188,4 @@
 2. If a live demo is possible, rehearse Quick Select beforehand (type `1, 2, 33, 45` on the take-attendance page).
 3. Each member should be able to answer basic questions about *any* slide, not just their own.
 4. Likely examiner questions: "Why MongoDB over SQL?", "How does JWT refresh work?", "What stops a teacher marking a friend present remotely?" — prepare short answers.
+5. The Slide 12 QR demo needs prep: register the presenter's phone at `/student/register-device` (one-time Face ID/fingerprint enrollment) beforehand, and use two devices — laptop projecting the QR, phone scanning.

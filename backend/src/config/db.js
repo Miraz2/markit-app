@@ -18,6 +18,8 @@ export async function connectDB() {
 
   await mongoose.connect(uri, {
     autoIndex: process.env.NODE_ENV !== "production",
+    maxPoolSize: Number(process.env.MONGO_POOL_SIZE) || 50,
+    serverSelectionTimeoutMS: 10000,
   });
 
   return mongoose.connection;
