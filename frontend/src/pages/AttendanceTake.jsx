@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
+import QRCode from "qrcode";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
-import { studentApi, attendanceApi, metaApi } from "../api/endpoints";
+import { studentApi, attendanceApi, metaApi, webauthnApi } from "../api/endpoints";
 import {
   CheckSquare,
   Sparkles,
@@ -12,6 +13,10 @@ import {
   X,
   ShieldAlert,
   ArrowLeft,
+  QrCode,
+  RefreshCw,
+  Fingerprint,
+  ScanLine,
 } from "lucide-react";
 
 function todayStr() {
@@ -34,6 +39,14 @@ export default function AttendanceTake() {
   const [quickInput, setQuickInput] = useState("");
   const [presentIds, setPresentIds] = useState(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Dynamic QR projection
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrImg, setQrImg] = useState(null);
+  const [secondsLeft, setSecondsLeft] = useState(10);
+  const [scanFeed, setScanFeed] = useState([]);
+  const [qrNonce, setQrNonce] = useState(0);
+  const seenScanIdsRef = useRef(new Set());
 
   // Active session (used as sessionName on submit)
   const { data: sessionData } = useQuery({
@@ -75,9 +88,75 @@ export default function AttendanceTake() {
     }
   }, [existingSession, students]);
 
+  // Dynamic QR: fresh signed token every 10s + live polling of verified scans.
+  // A verified scan only auto-selects the student's row here — nothing is
+  // written to the database until the teacher reviews and submits manually.
+  useEffect(() => {
+    if (!qrOpen || !department || !batch || !section) return;
+
+    const qrParams = { department, batch, section, courseName, date };
+    let cancelled = false;
+
+    const refreshQr = async () => {
+      try {
+        const { data } = await webauthnApi.classQr(qrParams);
+        if (cancelled) return;
+        const img = await QRCode.toDataURL(data.url, { width: 512, margin: 2 });
+        if (cancelled) return;
+        setQrImg(img);
+        setSecondsLeft(Math.max(1, Math.ceil(data.expiresInMs / 1000)));
+      } catch (err) {
+        if (!cancelled) toast.error(err.response?.data?.message || "Failed to generate QR code");
+      }
+    };
+
+    const pollScans = async () => {
+      try {
+        const { data } = await webauthnApi.recentScans(qrParams);
+        if (cancelled || !Array.isArray(data.scans)) return;
+        const fresh = data.scans.filter((s) => !seenScanIdsRef.current.has(String(s.student)));
+        if (fresh.length === 0) return;
+        setPresentIds((prev) => {
+          const next = new Set(prev);
+          fresh.forEach((s) => next.add(s.student));
+          return next;
+        });
+        fresh.forEach((s) => seenScanIdsRef.current.add(String(s.student)));
+        setScanFeed((prev) => [...[...fresh].reverse(), ...prev].slice(0, 8));
+        toast.success(`${fresh.map((s) => s.name).join(", ")} verified ✓`);
+      } catch {
+        // transient poll failure — next tick retries
+      }
+    };
+
+    refreshQr();
+    pollScans();
+    const qrTimer = setInterval(refreshQr, 10000);
+    const scanTimer = setInterval(pollScans, 3000);
+    const tickTimer = setInterval(() => setSecondsLeft((s) => (s > 0 ? s - 1 : 0)), 1000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(qrTimer);
+      clearInterval(scanTimer);
+      clearInterval(tickTimer);
+    };
+  }, [qrOpen, department, batch, section, courseName, date, qrNonce]);
+
+  const closeQrModal = () => {
+    setQrOpen(false);
+    setQrImg(null);
+    setScanFeed([]);
+    seenScanIdsRef.current = new Set();
+  };
+
+  const refreshQrNow = () => {
+    setSecondsLeft(10);
+    setQrNonce((n) => n + 1);
+  };
+
   // Quick roll selection
-  const handleQuickSelect = (e) => {
-    if (e) e.preventDefault();
+  const handleQuickSelect = (e) => {    if (e) e.preventDefault();
     if (!quickInput.trim()) return toast.error("Enter roll digits first");
     if (students.length === 0) return toast.error("No students loaded");
 
@@ -285,6 +364,10 @@ export default function AttendanceTake() {
           {/* Action Bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 glass-card px-4 py-3 rounded-2xl">
             <div className="flex items-center gap-2">
+              <button onClick={() => setQrOpen(true)} className="glass-btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
+                <QrCode className="h-3.5 w-3.5" />
+                Project Dynamic QR
+              </button>
               <button onClick={() => markAll(true)} className="glass-btn-secondary text-xs py-1.5 px-3">
                 All Present
               </button>
@@ -398,6 +481,100 @@ export default function AttendanceTake() {
                 {submitMutation.isPending ? "Submitting…" : "Confirm & Submit"}
               </button>
             </div>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Dynamic QR Projection Modal */}
+      {qrOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
+            <div className="glass-card w-full max-w-sm rounded-3xl shadow-2xl border border-white/20 relative bg-white/95 dark:bg-[#242b3d]/95 overflow-hidden">
+              <button
+                onClick={closeQrModal}
+                className="absolute top-4 right-4 z-10 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white/60 dark:bg-black/30 rounded-full p-1.5"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="px-6 pt-6 pb-2 text-center">
+                <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white flex items-center justify-center gap-2">
+                  <ScanLine className="h-5 w-5" />
+                  Scan to Mark Present
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-300 mt-0.5 font-mono">
+                  {department}-{batch}-{section} · {courseName || "General"} · {date}
+                </p>
+              </div>
+
+              <div className="px-6 py-4 flex flex-col items-center">
+                <div className="relative p-3 bg-white rounded-2xl border border-slate-200 shadow-inner">
+                  {qrImg ? (
+                    <img src={qrImg} alt="Attendance QR" className="h-56 w-56 block rounded-lg" />
+                  ) : (
+                    <div className="h-56 w-56 flex items-center justify-center text-xs text-slate-400">
+                      Generating…
+                    </div>
+                  )}
+                  {qrImg && secondsLeft <= 3 && (
+                    <div className="absolute inset-0 rounded-2xl border-2 border-amber-400 animate-pulse pointer-events-none" />
+                  )}
+                </div>
+
+                <div className="w-full mt-3 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div
+                    className="h-full bg-slate-600 dark:bg-slate-300 rounded-full transition-all duration-1000 ease-linear"
+                    style={{ width: `${(secondsLeft / 10) * 100}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-300 mt-1.5 uppercase tracking-wider font-bold">
+                  Refreshes in {secondsLeft}s
+                </p>
+              </div>
+
+              <div className="px-6 pb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Fingerprint className="h-3.5 w-3.5" />
+                  Live verifications
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {scanFeed.length === 0 ? (
+                    <p className="text-xs text-slate-400 py-3 text-center">
+                      Waiting for students to scan…
+                    </p>
+                  ) : (
+                    scanFeed.map((s) => (
+                      <div
+                        key={`${s.student}-${s.at}`}
+                        className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20"
+                      >
+                        <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                          {s.name}
+                        </span>
+                        <span className="flex items-center gap-2 shrink-0 ml-2">
+                          <span className="font-mono text-[10px] text-slate-500">{s.roll}</span>
+                          <Check className="h-3.5 w-3.5 text-emerald-500" strokeWidth={3} />
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="px-6 py-4">
+                <p className="text-[10px] text-slate-500 dark:text-slate-300 leading-relaxed text-center">
+                  Verified students are auto-selected in your list below. Review everything, then hit
+                  Submit Attendance.
+                </p>
+                <button
+                  onClick={refreshQrNow}
+                  className="glass-btn-secondary w-full mt-3 text-xs py-2 justify-center flex items-center gap-1.5"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Refresh now
+                </button>
+              </div>
             </div>
           </div>,
           document.body

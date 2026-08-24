@@ -22,6 +22,8 @@ import StudentCourses from "./pages/StudentCourses";
 import ClassStudents from "./pages/ClassStudents";
 import AttendanceTake from "./pages/AttendanceTake";
 import TakeCourses from "./pages/TakeCourses";
+import ScanAttendance from "./pages/ScanAttendance";
+import RegisterDevice from "./pages/RegisterDevice";
 import SummarySessions from "./pages/SummarySessions";
 import SummaryClasses from "./pages/SummaryClasses";
 import AttendanceSummary from "./pages/AttendanceSummary";
@@ -128,6 +130,18 @@ export default function App() {
                 <Route path="/portal" element={<StudentPortalHome />} />
                 <Route path="/portal/history" element={<StudentPortalHistory />} />
                 <Route path="/portal/profile" element={<StudentPortalProfile />} />
+                <Route path="/student/register-device" element={<RegisterDevice />} />
+              </Route>
+
+              {/* QR scan landing — student session required, but full-screen (no layout) */}
+              <Route
+                element={
+                  <RequireStudent>
+                    <Outlet />
+                  </RequireStudent>
+                }
+              >
+                <Route path="/attendance/scan" element={<ScanAttendance />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />
