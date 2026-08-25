@@ -51,7 +51,11 @@ export default function AttendanceTake() {
   const activeTicketRef = useRef(null);
 
   // Classroom GPS anchor — captured when the projection opens so scans can be
-  // distance-checked against the room (anti video-call relay).
+  // distance-checked against the room (anti video-call relay). Teacher-toggled;
+  // the choice persists between sessions.
+  const [geoCheckEnabled, setGeoCheckEnabled] = useState(
+    () => localStorage.getItem("markit.qrGpsCheck") !== "off"
+  );
   const [geoStatus, setGeoStatus] = useState("idle"); // idle | pending | locked | off
   const [classLoc, setClassLoc] = useState(null);
   const [geoRadius, setGeoRadius] = useState(150);
@@ -96,12 +100,14 @@ export default function AttendanceTake() {
     }
   }, [existingSession, students]);
 
-  // Anchor the classroom position once per projection. The QR effect waits
-  // for this so no unanchored ticket is ever projected.
+  // Anchor the classroom position once per projection (or whenever the
+  // teacher toggles the GPS requirement mid-session — ticket rotation picks
+  // up the change). The QR effect waits for this so no mismatched ticket is
+  // ever projected.
   useEffect(() => {
     if (!qrOpen) return;
     setClassLoc(null);
-    if (!("geolocation" in navigator)) {
+    if (!geoCheckEnabled || !("geolocation" in navigator)) {
       setGeoStatus("off");
       return;
     }
@@ -114,7 +120,15 @@ export default function AttendanceTake() {
       () => setGeoStatus("off"),
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 }
     );
-  }, [qrOpen]);
+  }, [qrOpen, geoCheckEnabled]);
+
+  const toggleGeoCheck = () => {
+    setGeoCheckEnabled((v) => {
+      const next = !v;
+      localStorage.setItem("markit.qrGpsCheck", next ? "on" : "off");
+      return next;
+    });
+  };
 
   // Dynamic QR: fresh short ticket every 10s + live polling of verified scans.
   // A verified scan only auto-selects the student's row here — nothing is
@@ -531,33 +545,58 @@ export default function AttendanceTake() {
         createPortal(
           <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950/95 backdrop-blur-xl overflow-y-auto">
             {/* Header */}
-            <div className="shrink-0 flex items-start justify-between px-5 sm:px-8 pt-4">
+            <div className="shrink-0 flex items-start justify-between px-4 sm:px-6 pt-3">
               <div>
-                <h3 className="text-base sm:text-xl font-bold font-display text-white flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-bold font-display text-white flex items-center gap-2">
                   <ScanLine className="h-5 w-5 text-emerald-400" />
                   Scan to Mark Present
                 </h3>
                 <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-mono">
                   {department}-{batch}-{section} · {courseName || "General"} · {date}
                 </p>
-                {geoStatus === "locked" && (
-                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
-                    <MapPin className="h-3 w-3" />
-                    GPS check on · {geoRadius} m
-                  </span>
-                )}
-                {geoStatus === "off" && (
-                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300">
-                    <MapPin className="h-3 w-3" />
-                    No GPS — relay check off
-                  </span>
-                )}
-                {geoStatus === "pending" && (
-                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/15 text-slate-300">
-                    <MapPin className="h-3 w-3 animate-pulse" />
-                    Locking location…
-                  </span>
-                )}
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  {geoStatus === "locked" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                      <MapPin className="h-3 w-3" />
+                      In-classroom only · {geoRadius} m
+                    </span>
+                  )}
+                  {!geoCheckEnabled && geoStatus !== "pending" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/15 text-slate-400">
+                      <MapPin className="h-3 w-3" />
+                      GPS check off
+                    </span>
+                  )}
+                  {geoCheckEnabled && geoStatus === "off" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                      <MapPin className="h-3 w-3" />
+                      No GPS — relay check off
+                    </span>
+                  )}
+                  {geoStatus === "pending" && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/15 text-slate-300">
+                      <MapPin className="h-3 w-3 animate-pulse" />
+                      Locking location…
+                    </span>
+                  )}
+                  <button
+                    onClick={toggleGeoCheck}
+                    className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-300 hover:text-white transition"
+                  >
+                    <span
+                      className={`relative h-4 w-7 rounded-full transition-colors ${
+                        geoCheckEnabled ? "bg-emerald-500/80" : "bg-slate-600"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all ${
+                          geoCheckEnabled ? "left-3.5" : "left-0.5"
+                        }`}
+                      />
+                    </span>
+                    Require GPS presence
+                  </button>
+                </div>
               </div>
               <button
                 onClick={closeQrModal}
@@ -568,10 +607,10 @@ export default function AttendanceTake() {
             </div>
 
             {/* Giant QR + live verification list side by side */}
-            <div className="flex-1 min-h-0 w-full flex flex-col md:flex-row items-center justify-center gap-4 md:gap-10 py-3 px-5">
+            <div className="flex-1 min-h-0 w-full flex flex-col md:flex-row items-center justify-center gap-3 md:gap-8 py-1.5 px-4">
               {/* QR column */}
               <div className="flex flex-col items-center min-h-0">
-                <div className="relative p-2.5 sm:p-3 bg-white rounded-[1.75rem] shadow-2xl w-[min(calc(100vh_-_17rem),92vw)] md:w-[min(calc(100vh_-_17rem),46vw)]">
+                <div className="relative p-2 sm:p-2.5 bg-white rounded-[1.75rem] shadow-2xl w-[min(calc(100vh_-_9.5rem),94vw)] md:w-[min(calc(100vh_-_9.5rem),48vw)]">
                   {qrImg ? (
                     <img src={qrImg} alt="Attendance QR" className="block w-full h-auto rounded-xl" />
                   ) : (
@@ -584,8 +623,8 @@ export default function AttendanceTake() {
                   )}
                 </div>
 
-                <div className="mt-3 flex flex-col items-center gap-1.5 w-[min(calc(100vh_-_17rem),92vw)] md:w-[min(calc(100vh_-_17rem),46vw)]">
-                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                <div className="mt-2 flex flex-col items-center gap-1 w-[min(calc(100vh_-_9.5rem),94vw)] md:w-[min(calc(100vh_-_9.5rem),48vw)]">
+                  <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
                     <div
                       className="h-full bg-emerald-400 rounded-full transition-all duration-1000 ease-linear"
                       style={{ width: `${(secondsLeft / 10) * 100}%` }}
