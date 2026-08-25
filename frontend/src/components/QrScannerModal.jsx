@@ -5,12 +5,34 @@ import { X, ScanLine, Zap, Camera } from "lucide-react";
 
 const REGION_ID = "markit-qr-scan-region";
 
+function describeCameraError(e) {
+  const raw = `${e?.name || ""} ${e?.message || e}`;
+  if (/NotAllowed|Permission/i.test(raw)) {
+    return {
+      blocked: true,
+      text:
+        "Your browser blocked the camera without showing a prompt. Fix it on this phone:\n" +
+        "1. Tap the lock / ⓘ icon beside the address bar \u2192 Permissions \u2192 Camera \u2192 Allow\n" +
+        "2. Still stuck? Open phone Settings \u2192 Apps \u2192 your browser \u2192 enable Camera\n" +
+        "3. Arrived via WhatsApp/Facebook? Use \u201cOpen in Chrome\u201d first.",
+    };
+  }
+  if (/NotFound|Overconstrained/i.test(raw)) {
+    return { text: "No usable camera was found on this device." };
+  }
+  if (/NotReadable|TrackStart/i.test(raw)) {
+    return { text: "The camera seems busy. Close other apps that use it, then retry." };
+  }
+  return { text: "Couldn't start the camera. Try again, or use the Camera app tab." };
+}
+
 export default function QrScannerModal({ open, onClose }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState("app"); // "app" = in-app live scan, "help" = external camera app
   const [error, setError] = useState(null);
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(false);
+  const [scanAttempt, setScanAttempt] = useState(0);
   const instRef = useRef(null);
   const handledRef = useRef(false);
 
@@ -27,16 +49,17 @@ export default function QrScannerModal({ open, onClose }) {
     setError(null);
 
     if (!window.isSecureContext) {
-      setError(
-        "The camera needs a secure (https) connection. Open this page over https, or use the Camera app option."
-      );
+      setError({
+        text: "The camera needs a secure (https) connection. Open this page over https, or use the Camera app option.",
+      });
       return;
     }
 
+    let cancelled = false;
     const inst = new Html5Qrcode(REGION_ID, { verbose: false });
     instRef.current = inst;
     const view = document.getElementById(REGION_ID);
-    const box = Math.max(160, Math.floor(Math.min(((view?.clientWidth || 300) * 0.75), 260)));
+    const box = Math.max(160, Math.floor(Math.min((view?.clientWidth || 300) * 0.75, 260)));
 
     inst
       .start(
@@ -46,6 +69,7 @@ export default function QrScannerModal({ open, onClose }) {
         () => {}
       )
       .then(() => {
+        if (cancelled) return;
         try {
           const caps = inst.getRunningTrackCapabilities();
           setTorchSupported(Boolean(caps && "torch" in caps));
@@ -54,17 +78,11 @@ export default function QrScannerModal({ open, onClose }) {
         }
       })
       .catch((e) => {
-        const msg = String(e?.message || e);
-        setError(
-          /permission|NotAllowed/i.test(msg)
-            ? "Camera permission denied. Allow it in your browser settings, or use the Camera app option."
-            : /NotFound|Overconstrained|no camera/i.test(msg)
-            ? "No back camera was found on this device."
-            : "Couldn't start the camera. Use the Camera app option instead."
-        );
+        if (!cancelled) setError(describeCameraError(e));
       });
 
     return () => {
+      cancelled = true;
       const running = instRef.current;
       instRef.current = null;
       if (running) {
@@ -74,7 +92,7 @@ export default function QrScannerModal({ open, onClose }) {
           .catch(() => {});
       }
     };
-  }, [open, mode]);
+  }, [open, mode, scanAttempt]);
 
   const handleDecode = (text) => {
     if (handledRef.current) return;
@@ -87,7 +105,7 @@ export default function QrScannerModal({ open, onClose }) {
     if (!token && typeof text === "string" && text.includes("?")) {
       token = new URLSearchParams(text.slice(text.indexOf("?") + 1)).get("t");
     }
-    if (!token) return; // not a MarkIt attendance code — keep scanning
+    if (!token) return;
 
     handledRef.current = true;
     navigate(`/attendance/scan?t=${encodeURIComponent(token)}`);
@@ -123,7 +141,6 @@ export default function QrScannerModal({ open, onClose }) {
           </button>
         </div>
 
-        {/* Mode switch */}
         <div className="flex gap-1 mx-5 mt-4 p-1 rounded-xl bg-slate-100 dark:bg-white/[0.06]">
           {[
             { id: "app", label: "In-app scanner", icon: ScanLine },
@@ -146,7 +163,7 @@ export default function QrScannerModal({ open, onClose }) {
 
         {mode === "app" ? (
           <div className="px-5 pb-6 pt-4">
-            <div className="relative w-full min-h-[260px] rounded-2xl overflow-hidden bg-black [&_video]:w-full [&_video]:object-cover">
+            <div className="relative w-full min-h-[220px] rounded-2xl overflow-hidden bg-black [&_video]:w-full [&_video]:object-cover">
               <div id={REGION_ID} className="w-full" />
               {!error && (
                 <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
@@ -158,9 +175,18 @@ export default function QrScannerModal({ open, onClose }) {
             </div>
 
             {error && (
-              <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-300/70 dark:border-amber-500/25 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
-                {error}
-                <button onClick={() => window.location.reload()} className="ml-2 underline underline-offset-2">
+              <div
+                className={`mt-3 p-3 rounded-xl border text-[11px] font-semibold whitespace-pre-line ${
+                  error.blocked
+                    ? "bg-red-50 dark:bg-red-500/10 border-red-300/70 dark:border-red-500/25 text-red-700 dark:text-red-300"
+                    : "bg-amber-50 dark:bg-amber-500/10 border-amber-300/70 dark:border-amber-500/25 text-amber-700 dark:text-amber-300"
+                }`}
+              >
+                {error.text}
+                <button
+                  onClick={() => setScanAttempt((a) => a + 1)}
+                  className="ml-2 underline underline-offset-2"
+                >
                   Retry
                 </button>
               </div>
