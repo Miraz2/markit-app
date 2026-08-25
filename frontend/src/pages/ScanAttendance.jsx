@@ -11,6 +11,16 @@ import { useAuth } from "../context/AuthContext";
 import Spinner from "../components/ui/Spinner";
 import { Fingerprint, ShieldCheck, RefreshCw, QrCode, AlertTriangle, Check } from "lucide-react";
 
+const getLocation = () =>
+  new Promise((resolve) => {
+    if (!("geolocation" in navigator)) return resolve(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+    );
+  });
+
 export default function ScanAttendance() {
   const { student } = useAuth();
   const [searchParams] = useSearchParams();
@@ -42,7 +52,9 @@ export default function ScanAttendance() {
     setResult(null);
 
     try {
-      const { data } = await webauthnApi.authOptions({ ticket });
+      // Position is checked server-side against the teacher's classroom anchor.
+      const location = await getLocation();
+      const { data } = await webauthnApi.authOptions({ ticket, ...(location || {}) });
       setPlatformAvailable(await platformAuthenticatorIsAvailable().catch(() => true));
 
       setStatus("verifying");
@@ -63,6 +75,10 @@ export default function ScanAttendance() {
         setError({ kind: "expired", message });
       } else if (code === "NO_DEVICE") {
         setError({ kind: "no-device", message });
+      } else if (code === "TOO_FAR") {
+        setError({ kind: "too-far", message });
+      } else if (code === "GEO_REQUIRED") {
+        setError({ kind: "geo-required", message });
       } else if (err.response) {
         setError({ kind: "rejected", message });
       } else if (err.name === "NotAllowedError") {
@@ -141,7 +157,7 @@ export default function ScanAttendance() {
           <>
             <div
               className={`h-16 w-16 mx-auto rounded-2xl flex items-center justify-center ${
-                error?.kind === "expired"
+                error?.kind === "expired" || error?.kind === "geo-required"
                   ? "bg-amber-500/10 text-amber-500"
                   : "bg-red-500/10 text-red-500"
               }`}
@@ -155,14 +171,20 @@ export default function ScanAttendance() {
                   ? "Device not registered"
                   : error?.kind === "cancelled"
                     ? "Verification cancelled"
-                    : "Couldn't verify"}
+                    : error?.kind === "too-far"
+                      ? "You're not in class"
+                      : error?.kind === "geo-required"
+                        ? "Location needed"
+                        : "Couldn't verify"}
             </h1>
             <p className="mt-1 text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
               {error?.message}
             </p>
 
             <div className="mt-5 flex flex-col gap-2">
-              {(error?.kind === "cancelled" || error?.kind === "failed") && (
+              {(error?.kind === "cancelled" ||
+                error?.kind === "failed" ||
+                error?.kind === "geo-required") && (
                 <button
                   onClick={retry}
                   className="glass-btn-primary w-full py-2.5 text-xs justify-center flex items-center gap-1.5"
@@ -177,6 +199,23 @@ export default function ScanAttendance() {
                     Each QR is valid for a few seconds to stop screenshot sharing. Point your camera
                     at the <span className="font-semibold">newest code on screen</span> and tap the
                     link quickly.
+                  </p>
+                </div>
+              )}
+              {error?.kind === "geo-required" && (
+                <div className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-left">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-300 leading-relaxed">
+                    Allow <span className="font-semibold">Location</span> for this site in your
+                    browser settings, then tap Retry. Your teacher verifies that students are inside
+                    the classroom.
+                  </p>
+                </div>
+              )}
+              {error?.kind === "too-far" && (
+                <div className="px-4 py-3 rounded-2xl bg-slate-100 dark:bg-white/5 border border-slate-200/70 dark:border-white/10 text-left">
+                  <p className="text-[11px] text-slate-500 dark:text-slate-300 leading-relaxed">
+                    Your device reports you're outside the classroom. Attendance can only be marked
+                    while you're physically present.
                   </p>
                 </div>
               )}

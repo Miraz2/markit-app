@@ -75,6 +75,18 @@ function readChallengeCookie(req, cookieName, expectedKind) {
   return payload;
 }
 
+// Great-circle distance in meters between two WGS84 points.
+function haversineMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 // --- Teacher: fresh short-lived QR token for a class session ---
 export const getClassQr = asyncHandler(async (req, res) => {
   if (req.teacher.role === "admin") {
@@ -88,6 +100,18 @@ export const getClassQr = asyncHandler(async (req, res) => {
 
   const ctx = { department, batch, section, courseName, date };
 
+  // Anchor the ticket to the classroom when the teacher's browser provides
+  // coordinates; scans are then rejected beyond env.geo.radiusMeters.
+  const rawLat = Number(req.query.latitude);
+  const rawLng = Number(req.query.longitude);
+  const hasLoc =
+    req.query.latitude !== undefined &&
+    req.query.longitude !== undefined &&
+    req.query.latitude !== "" &&
+    req.query.longitude !== "" &&
+    Number.isFinite(rawLat) &&
+    Number.isFinite(rawLng);
+
   // Opaque ticket instead of a long signed JWT keeps the encoded URL tiny so
   // the projected QR stays coarse and scannable from across a classroom.
   const ttlSeconds = env.jwt.qrExpiresSeconds + env.jwt.qrClockToleranceSeconds;
@@ -95,6 +119,7 @@ export const getClassQr = asyncHandler(async (req, res) => {
   await QrTicket.create({
     _id: ticketId,
     ctx,
+    ...(hasLoc ? { loc: { latitude: rawLat, longitude: rawLng } } : {}),
     expiresAt: new Date(Date.now() + ttlSeconds * 1000),
   });
 
@@ -104,7 +129,11 @@ export const getClassQr = asyncHandler(async (req, res) => {
   return sendOk(res, {
     ticketId,
     url,
-    expiresInMs: ttlSeconds * 1000,
+    // Rotation window shown on the projector clock. The ticket's real TTL is
+    // longer (rotation + clock tolerance) but that detail stays server-side.
+    expiresInMs: env.jwt.qrExpiresSeconds * 1000,
+    geoEnabled: hasLoc,
+    radiusMeters: env.geo.radiusMeters,
   });
 });
 
@@ -243,6 +272,28 @@ export const postAuthenticateOptions = asyncHandler(async (req, res) => {
     throw new ApiError(400, "QR code expired. Ask your teacher to refresh it and rescan.", {
       code: "QR_EXPIRED",
     });
+  }
+
+  // Anti-relay: a ticket anchored to the classroom only accepts scans from
+  // students whose browser reports a position inside the allowed radius.
+  if (doc.loc && doc.loc.latitude != null && doc.loc.longitude != null) {
+    const sLat = Number(req.body.latitude);
+    const sLng = Number(req.body.longitude);
+    if (!Number.isFinite(sLat) || !Number.isFinite(sLng)) {
+      throw new ApiError(
+        400,
+        "Location access is required for attendance. Allow location in your browser and scan again.",
+        { code: "GEO_REQUIRED" }
+      );
+    }
+    const distance = haversineMeters(doc.loc.latitude, doc.loc.longitude, sLat, sLng);
+    if (distance > env.geo.radiusMeters) {
+      throw new ApiError(
+        403,
+        "You don't appear to be inside the classroom. Attendance can only be marked on site.",
+        { code: "TOO_FAR" }
+      );
+    }
   }
 
   const decodedCtx = doc.ctx;

@@ -12,6 +12,12 @@ const qrTicketSchema = new mongoose.Schema({
     courseName: { type: String, default: "" },
     date: { type: String, required: true },
   },
+  // Classroom position captured from the teacher's device when the ticket was
+  // issued. Absent => distance check disabled for this ticket.
+  loc: {
+    latitude: { type: Number },
+    longitude: { type: Number },
+  },
   expiresAt: { type: Date, required: true },
 });
 

@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Fingerprint,
   ScanLine,
+  MapPin,
 } from "lucide-react";
 
 function todayStr() {
@@ -48,6 +49,12 @@ export default function AttendanceTake() {
   const [qrNonce, setQrNonce] = useState(0);
   const seenScanIdsRef = useRef(new Set());
   const activeTicketRef = useRef(null);
+
+  // Classroom GPS anchor — captured when the projection opens so scans can be
+  // distance-checked against the room (anti video-call relay).
+  const [geoStatus, setGeoStatus] = useState("idle"); // idle | pending | locked | off
+  const [classLoc, setClassLoc] = useState(null);
+  const [geoRadius, setGeoRadius] = useState(150);
 
   // Active session (used as sessionName on submit)
   const { data: sessionData } = useQuery({
@@ -89,13 +96,37 @@ export default function AttendanceTake() {
     }
   }, [existingSession, students]);
 
-  // Dynamic QR: fresh signed token every 10s + live polling of verified scans.
+  // Anchor the classroom position once per projection. The QR effect waits
+  // for this so no unanchored ticket is ever projected.
+  useEffect(() => {
+    if (!qrOpen) return;
+    setClassLoc(null);
+    if (!("geolocation" in navigator)) {
+      setGeoStatus("off");
+      return;
+    }
+    setGeoStatus("pending");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setClassLoc({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        setGeoStatus("locked");
+      },
+      () => setGeoStatus("off"),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 15000 }
+    );
+  }, [qrOpen]);
+
+  // Dynamic QR: fresh short ticket every 10s + live polling of verified scans.
   // A verified scan only auto-selects the student's row here — nothing is
   // written to the database until the teacher reviews and submits manually.
   useEffect(() => {
-    if (!qrOpen || !department || !batch || !section) return;
+    if (!qrOpen || !department || !batch || !section || geoStatus === "pending") return;
 
     const qrParams = { department, batch, section, courseName, date };
+    if (classLoc) {
+      qrParams.latitude = classLoc.latitude;
+      qrParams.longitude = classLoc.longitude;
+    }
     let cancelled = false;
 
     const refreshQr = async () => {
@@ -103,6 +134,7 @@ export default function AttendanceTake() {
         const { data } = await webauthnApi.classQr(qrParams);
         if (cancelled) return;
         activeTicketRef.current = data.ticketId;
+        setGeoRadius(data.radiusMeters || 150);
         const img = await QRCode.toDataURL(data.url, { width: 1024, margin: 2 });
         if (cancelled) return;
         setQrImg(img);
@@ -148,7 +180,7 @@ export default function AttendanceTake() {
       activeTicketRef.current = null;
       if (ticketId) webauthnApi.classQrClose({ ticketId }).catch(() => {});
     };
-  }, [qrOpen, department, batch, section, courseName, date, qrNonce]);
+  }, [qrOpen, department, batch, section, courseName, date, qrNonce, geoStatus, classLoc]);
 
   const closeQrModal = () => {
     setQrOpen(false);
@@ -508,6 +540,24 @@ export default function AttendanceTake() {
                 <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-mono">
                   {department}-{batch}-{section} · {courseName || "General"} · {date}
                 </p>
+                {geoStatus === "locked" && (
+                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+                    <MapPin className="h-3 w-3" />
+                    GPS check on · {geoRadius} m
+                  </span>
+                )}
+                {geoStatus === "off" && (
+                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 border border-amber-500/30 text-amber-300">
+                    <MapPin className="h-3 w-3" />
+                    No GPS — relay check off
+                  </span>
+                )}
+                {geoStatus === "pending" && (
+                  <span className="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/15 text-slate-300">
+                    <MapPin className="h-3 w-3 animate-pulse" />
+                    Locking location…
+                  </span>
+                )}
               </div>
               <button
                 onClick={closeQrModal}

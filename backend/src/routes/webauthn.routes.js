@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, query } from "express-validator";
 import { validate } from "../middleware/validate.middleware.js";
 import { requireAuth, requireStudent } from "../middleware/auth.middleware.js";
 import {
@@ -15,7 +15,16 @@ import {
 const router = Router();
 
 // Teacher endpoints
-router.get("/class-qr", requireAuth, getClassQr);
+router.get(
+  "/class-qr",
+  requireAuth,
+  [
+    query("latitude").optional().isFloat({ min: -90, max: 90 }),
+    query("longitude").optional().isFloat({ min: -180, max: 180 }),
+  ],
+  validate,
+  getClassQr
+);
 router.post(
   "/class-qr/close",
   requireAuth,
@@ -39,7 +48,11 @@ router.post(
 router.post(
   "/authenticate/options",
   requireStudent,
-  [body("ticket").trim().notEmpty().withMessage("ticket is required")],
+  [
+    body("ticket").trim().notEmpty().withMessage("ticket is required"),
+    body("latitude").optional().isFloat({ min: -90, max: 90 }),
+    body("longitude").optional().isFloat({ min: -180, max: 180 }),
+  ],
   validate,
   postAuthenticateOptions
 );

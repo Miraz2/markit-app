@@ -29,5 +29,10 @@ export const env = {
     rpName: process.env.WEBAUTHN_RP_NAME || "Attendance System",
     rpID: (process.env.WEBAUTHN_RP_ID || "").trim(),
   },
+  geo: {
+    // Anti-relay check: scans must come within this distance of the teacher's
+    // anchored classroom position. Generous enough for indoor GPS drift.
+    radiusMeters: Number(process.env.QR_GEO_RADIUS_METERS) || 150,
+  },
   cookieSecure: process.env.COOKIE_SECURE === "true",
 };
