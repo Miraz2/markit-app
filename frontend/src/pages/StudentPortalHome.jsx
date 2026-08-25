@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../context/AuthContext";
 import { portalApi } from "../api/endpoints";
+import QrScannerModal from "../components/QrScannerModal";
 import {
   LayoutDashboard,
   CalendarCheck,
@@ -13,6 +14,7 @@ import {
   KeyRound,
   History,
   ArrowRight,
+  ScanLine,
 } from "lucide-react";
 
 function StatWidget({ title, value, subtitle, icon: Icon, bgGradient }) {
@@ -40,6 +42,7 @@ function StatWidget({ title, value, subtitle, icon: Icon, bgGradient }) {
 export default function StudentPortalHome() {
   const { student } = useAuth();
   const navigate = useNavigate();
+  const [scanOpen, setScanOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["portal", "summary"],
@@ -128,6 +131,23 @@ export default function StudentPortalHome() {
           {lastMarkedDate && <> · Last marked {lastMarkedDate}</>}
         </p>
       </div>
+
+      {/* Scan Attendance action */}
+      <button
+        onClick={() => setScanOpen(true)}
+        className="w-full flex items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-[#4f46e5] via-indigo-500 to-violet-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.01] transition-all duration-300"
+      >
+        <span className="p-3 rounded-xl bg-white/15 shrink-0">
+          <ScanLine className="h-6 w-6" />
+        </span>
+        <span className="text-left flex-1 min-w-0">
+          <span className="block text-sm font-bold">Scan Attendance</span>
+          <span className="block text-xs text-white/80 mt-0.5">
+            Point your camera at the class QR code to mark yourself present
+          </span>
+        </span>
+        <ArrowRight className="h-5 w-5 shrink-0" />
+      </button>
 
       {isLoading ? (
         <div className="glass-card p-16 rounded-3xl text-center text-xs text-slate-400 border border-slate-200/80 dark:border-slate-800">
@@ -244,6 +264,8 @@ export default function StudentPortalHome() {
           </div>
         </>
       )}
+
+      <QrScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />
     </div>
   );
 }
