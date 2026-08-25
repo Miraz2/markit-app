@@ -5,6 +5,7 @@ import { requireAuth, requireStudent } from "../middleware/auth.middleware.js";
 import {
   getClassQr,
   getRecentScans,
+  closeClassQr,
   postRegisterOptions,
   postRegisterVerify,
   postAuthenticateOptions,
@@ -15,6 +16,13 @@ const router = Router();
 
 // Teacher endpoints
 router.get("/class-qr", requireAuth, getClassQr);
+router.post(
+  "/class-qr/close",
+  requireAuth,
+  [body("ticketId").trim().notEmpty().withMessage("ticketId is required")],
+  validate,
+  closeClassQr
+);
 router.get("/recent-scans", requireAuth, getRecentScans);
 
 // Student: one-time device registration
@@ -31,10 +39,7 @@ router.post(
 router.post(
   "/authenticate/options",
   requireStudent,
-  [
-    body("classId").trim().notEmpty().withMessage("classId is required"),
-    body("token").trim().notEmpty().withMessage("token is required"),
-  ],
+  [body("ticket").trim().notEmpty().withMessage("ticket is required")],
   validate,
   postAuthenticateOptions
 );

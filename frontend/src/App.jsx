@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useSearchParams, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
@@ -55,6 +55,12 @@ function HomeRedirect() {
   const { student, isLoading } = useAuth();
   if (isLoading) return null;
   return <Navigate to={student ? "/portal" : "/dashboard"} replace />;
+}
+
+// Short QR links (/s/:ticketId) forward to the scanner page.
+function TicketRedirect() {
+  const { ticketId } = useParams();
+  return <Navigate to={`/attendance/scan?t=${encodeURIComponent(ticketId || "")}`} replace />;
 }
 
 export default function App() {
@@ -143,6 +149,8 @@ export default function App() {
               >
                 <Route path="/attendance/scan" element={<ScanAttendance />} />
               </Route>
+
+              <Route path="/s/:ticketId" element={<TicketRedirect />} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>

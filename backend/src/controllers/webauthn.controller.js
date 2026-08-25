@@ -10,17 +10,12 @@ import {
 import { isoBase64URL } from "@simplewebauthn/server/helpers";
 
 import UserCredential from "../models/UserCredential.js";
+import QrTicket from "../models/QrTicket.js";
 import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { sendOk } from "../utils/ApiResponse.js";
-import {
-  buildScanKey,
-  encodeClassId,
-  decodeClassId,
-  signClassToken,
-  verifyClassToken,
-} from "../utils/qrToken.js";
+import { buildScanKey } from "../utils/qrToken.js";
 
 const CHALLENGE_COOKIE_OPTS = {
   httpOnly: true,
@@ -92,17 +87,32 @@ export const getClassQr = asyncHandler(async (req, res) => {
   }
 
   const ctx = { department, batch, section, courseName, date };
-  const classId = encodeClassId(ctx);
-  const token = signClassToken(ctx);
+
+  // Opaque ticket instead of a long signed JWT keeps the encoded URL tiny so
+  // the projected QR stays coarse and scannable from across a classroom.
+  const ttlSeconds = env.jwt.qrExpiresSeconds + env.jwt.qrClockToleranceSeconds;
+  const ticketId = crypto.randomBytes(9).toString("base64url");
+  await QrTicket.create({
+    _id: ticketId,
+    ctx,
+    expiresAt: new Date(Date.now() + ttlSeconds * 1000),
+  });
+
   const resolved = getRequestOrigin(req);
-  const url = `${resolved?.origin || env.clientOrigin}/attendance/scan?classId=${classId}&token=${token}`;
+  const url = `${resolved?.origin || env.clientOrigin}/s/${ticketId}`;
 
   return sendOk(res, {
-    classId,
-    token,
+    ticketId,
     url,
-    expiresInMs: env.jwt.qrExpiresSeconds * 1000,
+    expiresInMs: ttlSeconds * 1000,
   });
+});
+
+// --- Teacher: revoke the live ticket when the QR modal closes ---
+export const closeClassQr = asyncHandler(async (req, res) => {
+  const { ticketId } = req.body;
+  if (ticketId) await QrTicket.deleteOne({ _id: String(ticketId) }).catch(() => {});
+  return sendOk(res, { closed: true });
 });
 
 // --- Teacher: students whose biometric scan matched this exact class window ---
@@ -219,31 +229,23 @@ export const postRegisterVerify = asyncHandler(async (req, res) => {
   return sendOk(res, { verified: true }, "Device registered successfully");
 });
 
-// --- Student: validate scanned QR token, then request biometric assertion ---
+// --- Student: validate scanned QR ticket, then request biometric assertion ---
 export const postAuthenticateOptions = asyncHandler(async (req, res) => {
   const student = req.student;
-  const { classId, token } = req.body;
-  if (!classId || !token) throw ApiError.badRequest("classId and token are required");
+  const { ticket } = req.body;
+  if (!ticket) throw ApiError.badRequest("ticket is required");
 
-  const decodedCtx = decodeClassId(classId);
-  if (!decodedCtx) throw ApiError.badRequest("Malformed QR code data");
-
-  const result = verifyClassToken(token);
-  if (!result.ok) {
-    if (result.reason === "expired") {
-      throw new ApiError(400, "QR code expired. Ask your teacher to refresh it and rescan.", {
-        code: "QR_EXPIRED",
-      });
-    }
+  const doc = await QrTicket.findById(String(ticket)).lean();
+  if (!doc) {
     throw new ApiError(400, "Invalid QR code", { code: "QR_INVALID" });
   }
-
-  const tokenCtx = result.ctx;
-  const normalized = (c) =>
-    [c.department, c.batch, c.section, c.courseName || "", c.date].join("|");
-  if (normalized(decodedCtx) !== normalized(tokenCtx)) {
-    throw ApiError.badRequest("QR code data mismatch", { code: "QR_INVALID" });
+  if (new Date(doc.expiresAt).getTime() <= Date.now()) {
+    throw new ApiError(400, "QR code expired. Ask your teacher to refresh it and rescan.", {
+      code: "QR_EXPIRED",
+    });
   }
+
+  const decodedCtx = doc.ctx;
 
   const credentials = await UserCredential.find({ student: student._id })
     .select("credentialID")

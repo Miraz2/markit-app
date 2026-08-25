@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Html5Qrcode } from "html5-qrcode";
+import QrScanner from "qr-scanner";
+import qrWorkerUrl from "qr-scanner/qr-scanner-worker.min.js?url";
 import { X, ScanLine, Zap, Camera } from "lucide-react";
 
-const REGION_ID = "markit-qr-scan-region";
+QrScanner.WORKER_PATH = qrWorkerUrl;
 
 function describeCameraError(e) {
   const raw = `${e?.name || ""} ${e?.message || e}`;
@@ -30,23 +31,27 @@ export default function QrScannerModal({ open, onClose }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState("app"); // "app" = in-app live scan, "help" = external camera app
   const [error, setError] = useState(null);
-  const [torchOn, setTorchOn] = useState(false);
-  const [torchSupported, setTorchSupported] = useState(false);
+  const [hasFlash, setHasFlash] = useState(false);
+  const [flashOn, setFlashOn] = useState(false);
+  const [zoomRange, setZoomRange] = useState(null);
+  const [zoomVal, setZoomVal] = useState(1);
   const [scanAttempt, setScanAttempt] = useState(0);
-  const instRef = useRef(null);
+  const videoRef = useRef(null);
+  const scannerRef = useRef(null);
   const handledRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
       setMode("app");
       setError(null);
-      setTorchOn(false);
+      setHasFlash(false);
+      setFlashOn(false);
+      setZoomRange(null);
       return;
     }
     if (mode !== "app") return;
 
     handledRef.current = false;
-    setError(null);
 
     if (!window.isSecureContext) {
       setError({
@@ -56,54 +61,66 @@ export default function QrScannerModal({ open, onClose }) {
     }
 
     let cancelled = false;
-    const inst = new Html5Qrcode(REGION_ID, { verbose: false });
-    instRef.current = inst;
-    const view = document.getElementById(REGION_ID);
-    const box = Math.max(160, Math.floor(Math.min((view?.clientWidth || 300) * 0.75, 260)));
 
-    inst
-      .start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: box, height: box } },
-        handleDecode,
-        () => {}
-      )
-      .then(() => {
+    const startScanner = async () => {
+      setError(null);
+      const video = videoRef.current;
+      if (!video) return;
+      try {
+        const scanner = new QrScanner(video, handleDecode, {
+          onDecodeError: () => {},
+          preferredCamera: "environment",
+          highlightScanRegion: true,
+          highlightCodeOutline: true,
+          maxScansPerSecond: 15,
+        });
+        scannerRef.current = scanner;
+        await scanner.start();
         if (cancelled) return;
         try {
-          const caps = inst.getRunningTrackCapabilities();
-          setTorchSupported(Boolean(caps && "torch" in caps));
-        } catch {
-          setTorchSupported(false);
-        }
-      })
-      .catch((e) => {
+          setHasFlash(await scanner.hasFlash());
+        } catch {}
+        try {
+          const track = video.srcObject?.getVideoTracks?.()[0];
+          const caps = track?.getCapabilities?.();
+          if (caps?.zoom && caps.zoom.max > caps.zoom.min) {
+            setZoomRange({
+              min: caps.zoom.min,
+              max: caps.zoom.max,
+              step: caps.zoom.step || 0.1,
+            });
+            setZoomVal(track.getSettings()?.zoom ?? caps.zoom.min ?? 1);
+          }
+        } catch {}
+      } catch (e) {
         if (!cancelled) setError(describeCameraError(e));
-      });
+      }
+    };
+
+    startScanner();
 
     return () => {
       cancelled = true;
-      const running = instRef.current;
-      instRef.current = null;
-      if (running) {
-        running
-          .stop()
-          .then(() => running.clear())
+      const s = scannerRef.current;
+      scannerRef.current = null;
+      if (s) {
+        s.stop()
+          .then(() => s.destroy())
           .catch(() => {});
       }
     };
   }, [open, mode, scanAttempt]);
 
-  const handleDecode = (text) => {
-    if (handledRef.current) return;
+  const handleDecode = (data) => {
+    if (handledRef.current || !data) return;
     let token = null;
     try {
-      token = new URL(text).searchParams.get("t");
+      token = new URL(data).searchParams.get("t");
     } catch {
       token = null;
     }
-    if (!token && typeof text === "string" && text.includes("?")) {
-      token = new URLSearchParams(text.slice(text.indexOf("?") + 1)).get("t");
+    if (!token && typeof data === "string" && data.includes("?")) {
+      token = new URLSearchParams(data.slice(data.indexOf("?") + 1)).get("t");
     }
     if (!token) return;
 
@@ -111,15 +128,20 @@ export default function QrScannerModal({ open, onClose }) {
     navigate(`/attendance/scan?t=${encodeURIComponent(token)}`);
   };
 
-  const toggleTorch = async () => {
-    const inst = instRef.current;
-    if (!inst || !torchSupported) return;
+  const applyZoom = async (v) => {
+    setZoomVal(v);
     try {
-      await inst.applyVideoConstraints({ advanced: [{ torch: !torchOn }] });
-      setTorchOn((v) => !v);
-    } catch {
-      setTorchSupported(false);
-    }
+      const track = videoRef.current?.srcObject?.getVideoTracks?.()[0];
+      await track?.applyConstraints({ advanced: [{ zoom: Number(v) }] });
+    } catch {}
+  };
+
+  const toggleFlash = async () => {
+    const s = scannerRef.current;
+    if (!s) return;
+    try {
+      setFlashOn(await s.toggleFlash());
+    } catch {}
   };
 
   if (!open) return null;
@@ -163,14 +185,14 @@ export default function QrScannerModal({ open, onClose }) {
 
         {mode === "app" ? (
           <div className="px-5 pb-6 pt-4">
-            <div className="relative w-full min-h-[220px] rounded-2xl overflow-hidden bg-black [&_video]:w-full [&_video]:object-cover">
-              <div id={REGION_ID} className="w-full" />
+            <div className="relative w-full min-h-[260px] rounded-2xl overflow-hidden bg-black">
+              <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
               {!error && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+                <p className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
                   <span className="px-3 py-1.5 rounded-full bg-black/60 text-white text-[11px] font-semibold">
-                    Point at the projector&apos;s QR code
+                    Fit the whole QR inside the frame
                   </span>
-                </div>
+                </p>
               )}
             </div>
 
@@ -192,25 +214,45 @@ export default function QrScannerModal({ open, onClose }) {
               </div>
             )}
 
-            <div className="mt-3 flex items-center justify-between gap-2">
-              <p className="text-[11px] text-slate-500 dark:text-slate-300">
-                Stay on this screen — verification continues after the scan.
-              </p>
-              {torchSupported && (
-                <button
-                  onClick={toggleTorch}
-                  title="Toggle flashlight"
-                  className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition ${
-                    torchOn
-                      ? "bg-amber-400 text-slate-900"
-                      : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-200"
-                  }`}
-                >
-                  <Zap className="h-3.5 w-3.5" />
-                  Light
-                </button>
-              )}
-            </div>
+            {(zoomRange || hasFlash) && (
+              <div className="mt-3 flex items-center gap-3">
+                {zoomRange && (
+                  <>
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300 shrink-0">
+                      Zoom
+                    </span>
+                    <input
+                      type="range"
+                      min={zoomRange.min}
+                      max={zoomRange.max}
+                      step={zoomRange.step}
+                      value={zoomVal}
+                      onChange={(e) => applyZoom(e.target.value)}
+                      className="flex-1 accent-indigo-600"
+                      aria-label="Camera zoom"
+                    />
+                  </>
+                )}
+                {hasFlash && (
+                  <button
+                    onClick={toggleFlash}
+                    title="Toggle flashlight"
+                    className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition ${
+                      flashOn
+                        ? "bg-amber-400 text-slate-900"
+                        : "bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-200"
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    Light
+                  </button>
+                )}
+              </div>
+            )}
+
+            <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-300">
+              Stay on this screen — verification continues after the scan.
+            </p>
           </div>
         ) : (
           <div className="px-5 pb-6 pt-4 space-y-3">

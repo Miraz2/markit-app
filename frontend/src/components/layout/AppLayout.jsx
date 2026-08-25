@@ -26,7 +26,9 @@ import {
   ChevronsRight,
   Menu,
   ArrowLeft,
+  ScanLine,
 } from "lucide-react";
+import QrScannerModal from "../QrScannerModal";
 
 export default function AppLayout() {
   const { teacher, student, signout } = useAuth();
@@ -42,6 +44,7 @@ export default function AppLayout() {
     }
   });
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileAnchor, setProfileAnchor] = useState(null);
   const profileBtnRef = useRef(null);
@@ -228,6 +231,27 @@ export default function AppLayout() {
             </>
           )}
         </div>
+
+        {/* Scan Attendance — students only */}
+        {isStudent && (
+          <div className="px-3 pt-4">
+            <button
+              onClick={() => setScanOpen(true)}
+              title="Scan Attendance"
+              className={`w-full flex items-center rounded-xl bg-gradient-to-r from-[#4f46e5] via-indigo-500 to-violet-500 text-white shadow-md hover:shadow-lg transition-all duration-200 ${
+                collapsed ? "md:justify-center md:p-2.5 mx-auto" : "gap-3 px-4 py-3"
+              }`}
+            >
+              <ScanLine className="h-4 w-4 shrink-0" />
+              {!collapsed && (
+                <span className="text-left min-w-0">
+                  <span className="block text-xs font-bold">Scan Attendance</span>
+                  <span className="block text-[10px] text-white/80">QR + biometric check-in</span>
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Navigation Section */}
         <nav className="flex-1 space-y-1.5 px-3 py-4 overflow-y-auto">
@@ -417,6 +441,8 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {isStudent && <QrScannerModal open={scanOpen} onClose={() => setScanOpen(false)} />}
     </div>
   );
 }

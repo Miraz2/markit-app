@@ -77,6 +77,7 @@ export const attendanceApi = {
 // --- Dynamic QR + WebAuthn ---
 export const webauthnApi = {
   classQr: (params) => api.get("/webauthn/class-qr", { params }).then((r) => r.data),
+  classQrClose: (payload) => api.post("/webauthn/class-qr/close", payload).then((r) => r.data),
   recentScans: (params) => api.get("/webauthn/recent-scans", { params }).then((r) => r.data),
   registerOptions: () => api.post("/webauthn/register/options").then((r) => r.data),
   registerVerify: (payload) => api.post("/webauthn/register/verify", payload).then((r) => r.data),

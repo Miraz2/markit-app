@@ -14,8 +14,7 @@ import { Fingerprint, ShieldCheck, RefreshCw, QrCode, AlertTriangle, Check } fro
 export default function ScanAttendance() {
   const { student } = useAuth();
   const [searchParams] = useSearchParams();
-  const classId = searchParams.get("classId") || "";
-  const token = searchParams.get("token") || "";
+  const ticket = searchParams.get("t") || "";
 
   const [status, setStatus] = useState("starting");
   const [error, setError] = useState(null);
@@ -24,7 +23,7 @@ export default function ScanAttendance() {
   const startedRef = useRef(false);
 
   const runVerification = async () => {
-    if (!classId || !token) {
+    if (!ticket) {
       setError({ kind: "invalid", message: "This link is incomplete. Scan the QR code again." });
       setStatus("error");
       return;
@@ -43,7 +42,7 @@ export default function ScanAttendance() {
     setResult(null);
 
     try {
-      const { data } = await webauthnApi.authOptions({ classId, token });
+      const { data } = await webauthnApi.authOptions({ ticket });
       setPlatformAvailable(await platformAuthenticatorIsAvailable().catch(() => true));
 
       setStatus("verifying");

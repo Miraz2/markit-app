@@ -47,6 +47,7 @@ export default function AttendanceTake() {
   const [scanFeed, setScanFeed] = useState([]);
   const [qrNonce, setQrNonce] = useState(0);
   const seenScanIdsRef = useRef(new Set());
+  const activeTicketRef = useRef(null);
 
   // Active session (used as sessionName on submit)
   const { data: sessionData } = useQuery({
@@ -101,10 +102,8 @@ export default function AttendanceTake() {
       try {
         const { data } = await webauthnApi.classQr(qrParams);
         if (cancelled) return;
-        const scanUrl = `${window.location.origin}/attendance/scan?classId=${encodeURIComponent(
-          data.classId
-        )}&token=${encodeURIComponent(data.token)}`;
-        const img = await QRCode.toDataURL(scanUrl, { width: 512, margin: 2 });
+        activeTicketRef.current = data.ticketId;
+        const img = await QRCode.toDataURL(data.url, { width: 1024, margin: 2 });
         if (cancelled) return;
         setQrImg(img);
         setSecondsLeft(Math.max(1, Math.ceil(data.expiresInMs / 1000)));
@@ -143,6 +142,11 @@ export default function AttendanceTake() {
       clearInterval(qrTimer);
       clearInterval(scanTimer);
       clearInterval(tickTimer);
+      // Revoke the outstanding ticket immediately so closed/expired projections
+      // can't be scanned during the remaining TTL window.
+      const ticketId = activeTicketRef.current;
+      activeTicketRef.current = null;
+      if (ticketId) webauthnApi.classQrClose({ ticketId }).catch(() => {});
     };
   }, [qrOpen, department, batch, section, courseName, date, qrNonce]);
 
@@ -489,94 +493,103 @@ export default function AttendanceTake() {
           document.body
         )}
 
-      {/* Dynamic QR Projection Modal */}
+      {/* Dynamic QR Projection Modal — full-screen so the code is scannable
+          from across the room */}
       {qrOpen &&
         createPortal(
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md">
-            <div className="glass-card w-full max-w-sm rounded-3xl shadow-2xl border border-white/20 relative bg-white/95 dark:bg-[#242b3d]/95 overflow-hidden">
-              <button
-                onClick={closeQrModal}
-                className="absolute top-4 right-4 z-10 text-slate-400 hover:text-slate-900 dark:hover:text-white bg-white/60 dark:bg-black/30 rounded-full p-1.5"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <div className="px-6 pt-6 pb-2 text-center">
-                <h3 className="text-lg font-bold font-display text-slate-900 dark:text-white flex items-center justify-center gap-2">
-                  <ScanLine className="h-5 w-5" />
+          <div className="fixed inset-0 z-[70] flex flex-col bg-slate-950/95 backdrop-blur-xl overflow-y-auto">
+            {/* Header */}
+            <div className="shrink-0 flex items-start justify-between px-5 sm:px-8 pt-4">
+              <div>
+                <h3 className="text-base sm:text-xl font-bold font-display text-white flex items-center gap-2">
+                  <ScanLine className="h-5 w-5 text-emerald-400" />
                   Scan to Mark Present
                 </h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-300 mt-0.5 font-mono">
+                <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5 font-mono">
                   {department}-{batch}-{section} · {courseName || "General"} · {date}
                 </p>
               </div>
+              <button
+                onClick={closeQrModal}
+                className="text-slate-400 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
 
-              <div className="px-6 py-4 flex flex-col items-center">
-                <div className="relative p-3 bg-white rounded-2xl border border-slate-200 shadow-inner">
+            {/* Giant QR + live verification list side by side */}
+            <div className="flex-1 min-h-0 w-full flex flex-col md:flex-row items-center justify-center gap-4 md:gap-10 py-3 px-5">
+              {/* QR column */}
+              <div className="flex flex-col items-center min-h-0">
+                <div className="relative p-2.5 sm:p-3 bg-white rounded-[1.75rem] shadow-2xl w-[min(calc(100vh_-_17rem),92vw)] md:w-[min(calc(100vh_-_17rem),46vw)]">
                   {qrImg ? (
-                    <img src={qrImg} alt="Attendance QR" className="h-56 w-56 block rounded-lg" />
+                    <img src={qrImg} alt="Attendance QR" className="block w-full h-auto rounded-xl" />
                   ) : (
-                    <div className="h-56 w-56 flex items-center justify-center text-xs text-slate-400">
+                    <div className="aspect-square w-full flex items-center justify-center text-sm text-slate-400 font-semibold">
                       Generating…
                     </div>
                   )}
                   {qrImg && secondsLeft <= 3 && (
-                    <div className="absolute inset-0 rounded-2xl border-2 border-amber-400 animate-pulse pointer-events-none" />
+                    <div className="absolute inset-0 rounded-[1.75rem] border-4 border-amber-400 animate-pulse pointer-events-none" />
                   )}
                 </div>
 
-                <div className="w-full mt-3 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
-                  <div
-                    className="h-full bg-slate-600 dark:bg-slate-300 rounded-full transition-all duration-1000 ease-linear"
-                    style={{ width: `${(secondsLeft / 10) * 100}%` }}
-                  />
+                <div className="mt-3 flex flex-col items-center gap-1.5 w-[min(calc(100vh_-_17rem),92vw)] md:w-[min(calc(100vh_-_17rem),46vw)]">
+                  <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      className="h-full bg-emerald-400 rounded-full transition-all duration-1000 ease-linear"
+                      style={{ width: `${(secondsLeft / 10) * 100}%` }}
+                    />
+                  </div>
+                  <div className="w-full flex items-center justify-between">
+                    <p className="text-[11px] uppercase tracking-wider font-bold text-slate-300">
+                      Refreshes in {secondsLeft}s
+                    </p>
+                    <button
+                      onClick={refreshQrNow}
+                      className="text-[11px] font-bold text-emerald-300 hover:text-emerald-200 flex items-center gap-1"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Refresh now
+                    </button>
+                  </div>
                 </div>
-                <p className="text-[10px] text-slate-500 dark:text-slate-300 mt-1.5 uppercase tracking-wider font-bold">
-                  Refreshes in {secondsLeft}s
-                </p>
               </div>
 
-              <div className="px-6 pb-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+              {/* Scanned students — right of the QR on wide screens, below on small */}
+              <div className="w-full md:w-80 xl:w-96 shrink-0">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
                   <Fingerprint className="h-3.5 w-3.5" />
                   Live verifications
+                  {scanFeed.length > 0 && (
+                    <span className="ml-auto px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[10px]">
+                      {scanFeed.length}
+                    </span>
+                  )}
                 </p>
-                <div className="max-h-32 overflow-y-auto space-y-1">
+                <div className="rounded-2xl border border-white/10 bg-white/5 md:max-h-[26rem] overflow-y-auto">
                   {scanFeed.length === 0 ? (
-                    <p className="text-xs text-slate-400 py-3 text-center">
+                    <p className="text-xs text-slate-500 py-6 text-center">
                       Waiting for students to scan…
                     </p>
                   ) : (
-                    scanFeed.map((s) => (
-                      <div
-                        key={`${s.student}-${s.at}`}
-                        className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20"
-                      >
-                        <span className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                          {s.name}
-                        </span>
-                        <span className="flex items-center gap-2 shrink-0 ml-2">
-                          <span className="font-mono text-[10px] text-slate-500">{s.roll}</span>
-                          <Check className="h-3.5 w-3.5 text-emerald-500" strokeWidth={3} />
-                        </span>
-                      </div>
-                    ))
+                    <ul className="divide-y divide-white/5">
+                      {scanFeed.map((s) => (
+                        <li key={`${s.student}-${s.at}`} className="flex items-center gap-3 px-4 py-2.5">
+                          <span className="h-7 w-7 shrink-0 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
+                            <Check className="h-3.5 w-3.5 text-emerald-400" strokeWidth={3} />
+                          </span>
+                          <span className="font-mono text-xs font-bold text-white">{s.roll}</span>
+                          <span className="text-xs text-slate-400 truncate">{s.name}</span>
+                        </li>
+                      ))}
+                    </ul>
                   )}
                 </div>
-              </div>
-
-              <div className="px-6 py-4">
-                <p className="text-[10px] text-slate-500 dark:text-slate-300 leading-relaxed text-center">
-                  Verified students are auto-selected in your list below. Review everything, then hit
+                <p className="mt-2 text-[10px] text-slate-500 leading-relaxed hidden md:block">
+                  Verified students are auto-selected in your list. Review everything, then hit
                   Submit Attendance.
                 </p>
-                <button
-                  onClick={refreshQrNow}
-                  className="glass-btn-secondary w-full mt-3 text-xs py-2 justify-center flex items-center gap-1.5"
-                >
-                  <RefreshCw className="h-3.5 w-3.5" />
-                  Refresh now
-                </button>
               </div>
             </div>
           </div>,
