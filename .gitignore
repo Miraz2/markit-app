@@ -1,6 +1,11 @@
 node_modules/
 .env
 .env.local
+.env.*
+!.env.example
 dist/
 .DS_Store
 *.log
+
+# Kubernetes secrets (never commit real credentials)
+k8s/base/02-secrets.yaml
