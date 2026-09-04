@@ -35,8 +35,8 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 ---
-# k3d exposes LoadBalancer services automatically (mapped to host via --port flags).
-# No paid/cloud load balancer needed - k3d's built-in traefik ingress.
+# NodePort exposes the app (k3d maps host 30080 -> LB -> this NodePort).
+# No paid/cloud load balancer needed.
 apiVersion: v1
 kind: Service
 metadata:
@@ -48,4 +48,5 @@ spec:
   ports:
     - port: 80
       targetPort: 80
-  type: LoadBalancer
+      nodePort: 30080
+  type: NodePort

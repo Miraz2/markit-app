@@ -57,8 +57,7 @@ data:
         url: http://prometheus.monitoring:9090
         isDefault: true
 ---
-# Expose Grafana: k3d maps this LoadBalancer to host port 30030
-# Codespaces URL: http://localhost:30030 (port-forwarded to your teacher)
+# Expose Grafana: NodePort (k3d maps host 30030 -> this NodePort)
 apiVersion: v1
 kind: Service
 metadata:
@@ -68,6 +67,7 @@ spec:
   selector:
     app: grafana
   ports:
-    - port: 30030
+    - port: 80
       targetPort: 3000
-  type: LoadBalancer
+      nodePort: 30030
+  type: NodePort
