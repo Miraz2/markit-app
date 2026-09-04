@@ -35,8 +35,8 @@ spec:
             initialDelaySeconds: 5
             periodSeconds: 10
 ---
-# NodePort so we can reach the app from outside WITHOUT a paid Load Balancer.
-# Teacher visits: http://<EC2-PUBLIC-IP>:30080
+# k3d exposes LoadBalancer services automatically (mapped to host via --port flags).
+# No paid/cloud load balancer needed - k3d's built-in traefik ingress.
 apiVersion: v1
 kind: Service
 metadata:
@@ -48,5 +48,4 @@ spec:
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080
-  type: NodePort
+  type: LoadBalancer

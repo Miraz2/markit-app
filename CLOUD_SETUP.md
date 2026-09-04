@@ -1,5 +1,10 @@
 # Cloud-Native Deployment Guide (AWS EKS)
 
+> **⚠️ UPDATE:** This AWS EKS guide is kept for reference only. Without a credit card you cannot use
+> EKS/GKE. The actively recommended path is **`CODESPACES_K3S_SETUP.md`** (GitHub Codespaces + k3d —
+> real multi-node Kubernetes + load balancer, $0, no card). A card-free alternative is Vercel
+> (already configured). See those docs first.
+
 This guide walks through turning the app into a full **cloud-native** deployment on **Amazon EKS**
 (Elastic Kubernetes Service) using the always-free/small-cost tiers. Everything runs as Kubernetes
 pods: the app, MinIO (S3-compatible storage), RabbitMQ (messaging), Prometheus + Grafana (monitoring),
