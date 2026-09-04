@@ -13,10 +13,10 @@ echo "==> 3/6 Deploying configmap"
 kubectl apply -f k8s/base/01-configmap.yaml
 
 echo "==> 4/6 Deploying app + MinIO + RabbitMQ"
-kubectl apply -f k8s/base/kustomization.yaml
+kubectl apply -k k8s/base
 
 echo "==> 5/6 Deploying monitoring"
-kubectl apply -f k8s/monitoring/kustomization.yaml
+kubectl apply -k k8s/monitoring
 
 echo "==> 6/6 Waiting for rollout"
 kubectl rollout status deployment/backend -n attendance --timeout=180s || true
