@@ -132,5 +132,6 @@ A Codespace stops when you close it. For a 24/7 cluster you'd need a host. Free/
 | `ErrImagePull` | Images `ghcr.io/miraz2/...` must exist. Build first: `cd backend && docker build -t ghcr.io/miraz2/attendance-backend:latest . && cd ..` (repeat frontend), push, then `kubectl rollout restart`. |
 | Backend `CrashLoopBackOff` | Missing `02-secrets.yaml` MONGO_URI. `kubectl logs deployment/backend -n attendance`. |
 | App loads but API 502 | Nginx proxies `/api` → `backend:5000`. Ensure backend Service is named `backend` in `attendance` ns; set `CLIENT_ORIGIN`. |
+| Host `:30080` returns `404 page not found` but node IP/port-forward works | The k3d cluster was created with `--port ...@loadbalancer`, which breaks NodePort routing. Recreate using `@server:0` mappings (see `setup-k3d.sh`) and re-deploy. |
 | Ports not public | In Codespace **Ports** panel, set port visibility to **Public**. |
 | Codespace runs out of RAM | Reduce replicas; `kubectl scale deployment/backend -n attendance --replicas=1`. |

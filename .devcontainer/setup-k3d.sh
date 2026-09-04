@@ -15,13 +15,15 @@ fi
 echo "==> Creating multi-node k3d cluster with load balancer"
 # servers=1 agent=1 -> two worker-capable nodes (real orchestration)
 # --servers-memory/--agents-memory keep it light for Codespaces
+# Map host ports directly to server-node NodePorts so host:30080 -> NodePort 30080.
+# (Using @loadbalancer here breaks NodePort services.)
 k3d cluster create attendance \
   --servers 1 \
   --agents 1 \
   --agents-memory 1536m \
   --servers-memory 1536m \
-  --port 30080:80@loadbalancer \
-  --port 30030:30030@loadbalancer \
+  --port '30080:30080@server:0' \
+  --port '30030:30030@server:0' \
   --wait || true
 
 k3d kubeconfig merge attendance -d ~/.kube/config 2>/dev/null || true
