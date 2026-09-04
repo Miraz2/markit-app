@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ghcr.io/<YOUR_GITHUB_USERNAME>/attendance-frontend:latest
+          image: ghcr.io/miraz2/attendance-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
